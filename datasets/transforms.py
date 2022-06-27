@@ -7,7 +7,7 @@ import numpy as np
 from utils import coordinates
 import transforms3d
 import torch
-from tools.tsdf_fusion.fusion import TSDFVolumeTorch
+from tools.fusion import TSDFVolumeTorch
 
 
 class Compose(object):
