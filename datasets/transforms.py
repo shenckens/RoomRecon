@@ -338,12 +338,13 @@ class RandomTransformSpace(object):
         data['vol_origin_partial'] = vol_origin_partial
 
         # ------get partial tsdf, planes params and occupancy ground truth--------
-        if 'tsdf_list_full' in data.keys():
+        if 'tsdf_list_full' in data.keys() and 'planes' in data.keys():
             # -------------grid coordinates------------------
             old_origin = old_origin.view(1, 3)
 
             x, y, z = self.voxel_dim
             coords = coordinates(self.voxel_dim, device=old_origin.device)
+            world_t = coords.type(torch.float) * self.voxel_size + vol_origin_partial.view(3, 1)
             world = coords.type(torch.float) * \
                 self.voxel_size + vol_origin_partial.view(3, 1)
             world = torch.cat((world, torch.ones_like(world[:1])), dim=0)
@@ -368,6 +369,111 @@ class RandomTransformSpace(object):
                     tsdf_vol.integrate(depth_im, cam_intr,
                                        cam_pose, obs_weight=1.)
 
+                tsdf_vol, weight_vol = tsdf_vol.get_volume()
+                occ_vol = torch.zeros_like(tsdf_vol).bool()
+                occ_vol[(tsdf_vol < 0.999) & (tsdf_vol > -0.999) & (weight_vol > 1)] = True
+
+                data['occ_list'].append(occ_vol)
+
+
+                # grid sample expects coords in [-1,1]
+                coords_world_s = coords.view(3, x, y, z)[:, ::2 ** l, ::2 ** l, ::2 ** l] / 2 ** l
+                dim_s = list(coords_world_s.shape[1:])
+                coords_world_s = coords_world_s.view(3, -1)
+
+                old_voxel_dim = list(tsdf_s.shape)
+
+                coords_world_s = 2 * coords_world_s / (torch.Tensor(old_voxel_dim) - 1).view(3, 1) - 1
+                coords_world_s = coords_world_s[[2, 1, 0]].T.view([1] + dim_s + [3])
+
+                # bilinear interpolation near surface,
+                # no interpolation along -1,1 boundry
+                tsdf_vol = torch.nn.functional.grid_sample(
+                    tsdf_s.view([1, 1] + old_voxel_dim),
+                    coords_world_s, mode='nearest', align_corners=align_corners
+                ).squeeze()
+                tsdf_vol_bilin = torch.nn.functional.grid_sample(
+                    tsdf_s.view([1, 1] + old_voxel_dim), coords_world_s, mode='bilinear',
+                    align_corners=align_corners
+                ).squeeze()
+                mask = tsdf_vol.abs() < 1
+                tsdf_vol[mask] = tsdf_vol_bilin[mask]
+
+                # padding_mode='ones' does not exist for grid_sample so replace
+                # elements that were on the boarder with 1.
+                # voxels beyond full volume (prior to croping) should be marked as empty
+                mask = (coords_world_s.abs() >= 1).squeeze(0).any(3)
+                tsdf_vol[mask] = 1
+
+                data['tsdf_list'].append(tsdf_vol)
+
+            # extract indices
+            indices = data['indices']
+
+            old_voxel_dim = list(indices.shape)
+
+            coords = 2 * coords / (torch.Tensor(old_voxel_dim) - 1).view(3, 1) - 1
+            coords = coords[[2, 1, 0]].T.view([1] + self.voxel_dim + [3])
+
+            planes = data['planes']
+            plane_points = data['plane_points']
+
+            indices_vol = torch.nn.functional.grid_sample(
+                indices.view([1, 1] + old_voxel_dim).float(),
+                coords, mode='nearest', padding_mode='border', align_corners=align_corners
+            ).squeeze()
+
+            planes_valid = []
+            instance_pointnum = []
+            mean_xyz_list = []
+            world_t = world_t.view([3] + self.voxel_dim).contiguous()
+
+            for i, points in enumerate(plane_points):
+                # if (planes[i][:3] != 0).any():
+                points_t = torch.cat((points, torch.ones_like(points[:, :1])), dim=1)
+                points_t = (torch.inverse(transform) @ points_t.transpose(0, 1)).transpose(0, 1)[:, :3]
+                points_v = (points_t - vol_origin_partial) / self.voxel_size
+                valid = ((points_v >= 0) & (points_v < torch.tensor(self.voxel_dim))).all(-1)
+                ind = torch.nonzero(indices_vol == i, as_tuple=False)
+                ins_occ = data['occ_list'][0][ind[:, 0], ind[:, 1], ind[:, 2]]
+
+                # surface center or grid center?
+                # mean_xyz_list.append(points_t.mean(0))
+                ins_points = world_t[:, ind[:, 0], ind[:, 1], ind[:, 2]]
+                ins_points = ins_points[:, ins_occ]
+                if ins_points.shape[1] != 0:
+                    mean_xyz_list.append(ins_points.mean(-1))
+                else:
+                    mean_xyz_list.append(torch.zeros((3,)))
+
+                instance_pointnum.append(ins_points.shape[1])
+
+                # plane parameters from world to augmented world
+                plane = torch.transpose(transform, 0, 1) @ planes[i]
+                planes_valid.append(plane)
+
+                if valid.sum() == 0 or len(ind) == 0 or ins_occ.sum() == 0:
+                    # -1 represents invalid
+                    indices_vol[ind[:, 0], ind[:, 1], ind[:, 2]] = -1
+            if len(mean_xyz_list) != 0:
+                data['mean_xyz'] = torch.stack(mean_xyz_list)
+                data['planes'] = torch.stack(planes_valid)
+            else:
+                data['mean_xyz'] = torch.Tensor(mean_xyz_list)
+                data['planes'] = torch.Tensor(planes_valid)
+
+            data['instance_pointnum'] = torch.Tensor(instance_pointnum).int()
+            for l in range(self.n_layer):
+                data['label_list'].append(indices_vol[::2 ** l, ::2 ** l, ::2 ** l].contiguous())
+
+            data.pop('indices')
+            data.pop('depth')
+            data.pop('plane_points')
+            data.pop('tsdf_list_full')
+            data.pop('vol_dim')
+        # data.pop('epoch')
+
+        return data
 
 def rigid_transform(xyz, transform):
     """Applies a rigid transform to an (N, 3) pointcloud.
