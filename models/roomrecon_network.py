@@ -82,7 +82,6 @@ class RoomNet(nn.Module):
             self.normal_anchors, requires_grad=False)
         self.mean_shift = Bin_Mean_Shift(device='cuda')
 
-
     def get_target(self, coords, inputs, scale):
         '''
         Won't be used when 'fusion_on' flag is turned on
@@ -101,13 +100,40 @@ class RoomNet(nn.Module):
             # 2 ** scale == interval
             coords_down[:, 1:] = (coords[:, 1:] // 2 ** scale)
             tsdf_target = tsdf_target[coords_down[:, 0],
-                                    coords_down[:, 1], coords_down[:, 2], coords_down[:, 3]]
+                                      coords_down[:, 1], coords_down[:, 2], coords_down[:, 3]]
             label_target = label_target[coords_down[:, 0],
-                                    coords_down[:, 1], coords_down[:, 2], coords_down[:, 3]]
+                                        coords_down[:, 1], coords_down[:, 2], coords_down[:, 3]]
 
             occ_target = occ_target[coords_down[:, 0],
                                     coords_down[:, 1], coords_down[:, 2], coords_down[:, 3]]
             return tsdf_target, label_target, occ_target
 
-    def forward(self):
+    def upsample(self, pre_feat, pre_coords, interval, num=8):
+        '''
+
+        :param pre_feat: (Tensor), features from last level, (N, C)
+        :param pre_coords: (Tensor), coordinates from last level, (N, 4) (4 : Batch ind, x, y, z)
+        :param interval: interval of voxels, interval = scale ** 2
+        :param num: 1 -> 8
+        :return: up_feat : (Tensor), upsampled features, (N*8, C)
+        :return: up_coords: (N*8, 4), upsampled coordinates, (4 : Batch ind, x, y, z)
+        '''
+        with torch.no_grad():
+            pos_list = [1, 2, 3, [1, 2], [1, 3], [2, 3], [1, 2, 3]]
+            n, c = pre_feat.shape
+            up_feat = pre_feat.unsqueeze(1).expand(-1, num, -1).contiguous()
+            up_coords = pre_coords.unsqueeze(1).repeat(1, num, 1).contiguous()
+            for i in range(num - 1):
+                up_coords[:, i + 1, pos_list[i]] += interval
+
+            up_feat = up_feat.view(-1, c)
+            up_coords = up_coords.view(-1, 4)
+
+        return up_feat, up_coords
+
+    def forward(self, features, inputs, outputs):
         return 0
+
+    def compute_loss(self):
+        loss = 0
+        return loss
