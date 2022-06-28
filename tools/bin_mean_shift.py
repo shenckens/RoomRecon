@@ -1,6 +1,6 @@
 """
 This file is derived from [PlaneAE](https://github.com/svip-lab/PlanarReconstruction).
-Modified for [PlanarRecon](https://github.com/neu-vi/PlanarRecon) by Yiming Xie.
+Modified for [RoomRecon] (https://github.com/shenckens/RoomRecon).
 
 Original License:
 MIT License
