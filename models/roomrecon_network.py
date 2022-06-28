@@ -337,11 +337,13 @@ class RoomNet(nn.Module):
 
         return outputs, loss_dict
 
-    @staticmethod
-    def compute_loss(tsdf, occ, tsdf_target, occ_target, loss_weight=(1, 1),
+
+    def compute_loss(self, tsdf, occ, class_logits, residuals, distance, off_center,
+                     tsdf_target, occ_target, label_target,anchors_gt, residual_gt,
+                     planes_gt, mean_xyz, r_coords, loss_weight=(1, 1, 1, 1, 1),
                      mask=None, pos_weight=1.0):
         '''
-
+        (EDIT DESCRIPTION BELOW)
         :param tsdf: (Tensor), predicted tsdf, (N, 1)
         :param occ: (Tensor), predicted occupancy, (N, 1)
         :param tsdf_target: (Tensor),ground truth tsdf, (N, 1)
@@ -355,7 +357,7 @@ class RoomNet(nn.Module):
         tsdf = tsdf.view(-1)
         occ = occ.view(-1)
         tsdf_target = tsdf_target.view(-1)
-        occ_target = occ_target.view(-1)
+        # occ_target = occ_target.view(-1)
         if mask is not None:
             mask = mask.view(-1)
             tsdf = tsdf[mask]
@@ -380,8 +382,83 @@ class RoomNet(nn.Module):
         tsdf_target = apply_log_transform(tsdf_target[occ_target])
         tsdf_loss = torch.mean(torch.abs(tsdf - tsdf_target))
 
+        # plane loss
+        class_logits = class_logits[occ_target]
+        residuals = residuals[occ_target]
+        label_target = label_target[occ_target]
+        r_coords = r_coords[occ_target]
+        distance = distance[occ_target]
+        if off_center is not None:
+            off_center = off_center[occ_target]
+
+        valid = torch.nonzero(label_target >= 0, as_tuple=False).squeeze(1)
+        if len(valid) != 0:
+            label_target = label_target[valid]
+            class_logits = class_logits[valid]
+            residuals = residuals[valid]
+            r_coords = r_coords[valid]
+            distance = distance[valid]
+            if off_center is not None:
+                off_center = off_center[valid]
+
+            # extract gt for planes
+            bs = len(anchors_gt)
+            anchors_target = torch.zeros([label_target.shape[0]], device=label_target.device).long()
+            residual_target = torch.zeros([label_target.shape[0], 3], device=label_target.device)
+            planes_target = torch.zeros([label_target.shape[0], 4], device=label_target.device)
+            for b in range(bs):
+                batch_ind = torch.nonzero(r_coords[:, -1] == b, as_tuple=False).squeeze(1)
+                anchors_target[batch_ind] = anchors_gt[b][label_target[batch_ind]]
+                residual_target[batch_ind] = residual_gt[b][label_target[batch_ind]]
+                planes_target[batch_ind] = planes_gt[b][label_target[batch_ind]]
+
+
+            class_loss = F.cross_entropy(class_logits, anchors_target)
+            idx = torch.arange(residuals.shape[0], device=residuals.device).long()
+            residuals_roi = residuals[idx, anchors_target]
+            residual_loss = F.smooth_l1_loss(residuals_roi * 20, residual_target * 20)
+
+            # ----distance loss-----
+            coords = torch.cat([r_coords[:, :3], torch.ones_like(r_coords[:, :1])], dim=1)
+            planes_target = planes_target / (- planes_target[:, 3:4])
+            distance_gt = - (coords.unsqueeze(1) @ planes_target.unsqueeze(-1)).squeeze() / torch.norm(
+               planes_target[:, :3],
+               dim=1)
+
+            distance = apply_log_transform(distance.squeeze(1))
+            distance_gt = apply_log_transform(distance_gt / 0.12)
+            distance_loss = torch.mean(torch.abs(distance - distance_gt))
+
+            if off_center is not None:
+                # compute offset loss
+                # pt_offsets: (N, 3), float, cuda
+                # coords: (N, 3), float32
+                mean_xyz_target = torch.zeros([label_target.shape[0], 3], device=label_target.device)
+                for b in range(bs):
+                    batch_ind = torch.nonzero(r_coords[:, -1] == b, as_tuple=False).squeeze(1)
+                    unique_ins = torch.unique(label_target[batch_ind])
+                    for ins in unique_ins:
+                        batch_ins_ind = torch.nonzero(label_target[batch_ind] == ins, as_tuple=False).squeeze(1)
+                        mean_xyz_target[batch_ind[batch_ins_ind]] = r_coords[batch_ind[batch_ins_ind], :3].mean(0)
+
+                # mean_xyz_target = torch.zeros([label_target.shape[0], 3], device=label_target.device)
+                # for b in range(bs):
+                #     batch_ind = torch.nonzero(r_coords[:, -1] == b, as_tuple=False).squeeze(1)
+                #     mean_xyz_target[batch_ind] = mean_xyz[b][label_target[batch_ind]]
+
+                r_coords = r_coords[:, :3]
+
+                gt_offsets_center = mean_xyz_target - r_coords  # (N, 3)
+                off_loss = self.compute_offset_loss(off_center, gt_offsets_center)
+
+            else:
+                off_loss = 0
+        else:
+            class_loss = residual_loss = off_loss = 0
+
+
         # compute Mean Planar Loss (for enforcing planarity) between matching voxels from estimated plane instances and tsdf
 
-        # compute final loss
+        # compute final combined loss
         loss = loss_weight[0] * occ_loss + loss_weight[1] * tsdf_loss
         return loss
