@@ -31,3 +31,75 @@ def coordinates(voxel_dim, device=torch.device('cuda')):
     z = torch.arange(nz, dtype=torch.long, device=device)
     x, y, z = torch.meshgrid(x, y, z)
     return torch.stack((x.flatten(), y.flatten(), z.flatten()))
+
+
+# print arguments
+def print_args(args):
+    logger.info(
+        "################################  args  ################################")
+    for k, v in args.__dict__.items():
+        logger.info("{0: <10}\t{1: <30}\t{2: <20}".format(
+            k, str(v), str(type(v))))
+    logger.info(
+        "########################################################################")
+
+
+# torch.no_grad warpper for functions
+def make_nograd_func(func):
+    def wrapper(*f_args, **f_kwargs):
+        with torch.no_grad():
+            ret = func(*f_args, **f_kwargs)
+        return ret
+
+    return wrapper
+
+
+# convert a function into recursive style to handle nested dict/list/tuple variables
+def make_recursive_func(func):
+    def wrapper(vars):
+        if isinstance(vars, list):
+            return [wrapper(x) for x in vars]
+        elif isinstance(vars, tuple):
+            return tuple([wrapper(x) for x in vars])
+        elif isinstance(vars, dict):
+            return {k: wrapper(v) for k, v in vars.items()}
+        else:
+            return func(vars)
+
+    return wrapper
+
+
+@make_recursive_func
+def tensor2float(vars):
+    if isinstance(vars, float):
+        return vars
+    elif isinstance(vars, torch.Tensor):
+        if len(vars.shape) == 0:
+            return vars.data.item()
+        else:
+            return [v.data.item() for v in vars]
+    else:
+        raise NotImplementedError(
+            "invalid input type {} for tensor2float".format(type(vars)))
+
+
+@make_recursive_func
+def tensor2numpy(vars):
+    if isinstance(vars, np.ndarray):
+        return vars
+    elif isinstance(vars, torch.Tensor):
+        return vars.detach().cpu().numpy().copy()
+    else:
+        raise NotImplementedError(
+            "invalid input type {} for tensor2numpy".format(type(vars)))
+
+
+@make_recursive_func
+def tocuda(vars):
+    if isinstance(vars, torch.Tensor):
+        return vars.cuda()
+    elif isinstance(vars, str):
+        return vars
+    else:
+        raise NotImplementedError(
+            "invalid input type {} for tensor2numpy".format(type(vars)))
