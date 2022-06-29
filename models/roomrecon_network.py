@@ -327,6 +327,7 @@ class RoomNet(nn.Module):
                 # planes = planes[:, :3] # / planes[:, 3:]
                 embedding = torch.cat([planes[:, :3], center_points, planes[:, 3:], pre_occ], dim=1)
 
+
                 outputs['embedding'] = embedding
                 outputs['planes_gt'] = planes_gt
                 outputs['feat'] = feat
@@ -334,6 +335,87 @@ class RoomNet(nn.Module):
                 # --- Coming from NR ----
                 outputs['coords'] = pre_coords
                 outputs['tsdf'] = pre_tsdf
+
+
+                # ---- cluster plane instances and calc MPL for each instance.
+                batch_size = len(inputs['fragment'])
+                for i in range(batch_size):
+                    if 'embedding' not in outputs.keys():
+                            continue
+                    batch_ind = torch.nonzero(outputs['coords_'][-1][:, 0] == i, as_tuple=False).squeeze(1)
+                    mask0 = outputs['embedding'][batch_ind, :3].abs() < 2
+                    mask0 = mask0.all(-1)
+                    batch_ind = batch_ind[mask0]
+                    embedding, distance, occ = outputs['embedding'][batch_ind, :6], outputs['embedding'][batch_ind, 6:7], outputs['embedding'][batch_ind, 7:]
+
+                    if self.training:
+                        plane_gt = outputs['planes_gt'][i]
+                        labels = outputs['label_target'][2][batch_ind]
+
+
+                    # --------clustering------------
+                    scale = embedding.max(dim=0)[0] - embedding.min(dim=0)[0]
+                    embedding = embedding / scale
+                    segmentation, plane_clusters, invalid, _ = self.mean_shift(occ, embedding)
+
+                    total_MPL_loss = 0
+
+                    if segmentation is not None:
+                        segmentation = segmentation.argmax(-1)
+                        segmentation[invalid] = -1
+                        plane_clusters = (plane_clusters * scale)[:, :4]
+
+                        plane_points = []
+                        plane_labels = []
+                        plane_occ = []
+                        plane_weight = []
+                        plane_param = []
+                        plane_features = []
+                        coords = outputs['coords_'][-1][batch_ind, 1:]
+
+
+                        for i in range(plane_clusters.shape[0]):
+                            if self.training:
+                                # Generate matching ground truth
+                                plane_label = labels[segmentation == i]
+                                plane_label = plane_label[plane_label != -1]
+                                if plane_label.shape[0] != 0:
+                                    bincount = torch.bincount(plane_label)
+                                    label_ins = bincount.argmax()
+                                    ratio = bincount[label_ins].float() / plane_label.shape[0]
+                                    if ratio > 0.5 and label_ins not in plane_labels:
+                                        plane_labels.append(label_ins)
+                                        plane_points.append(coords[segmentation == i])
+                                        plane_occ.append(occ[segmentation == i].mean())
+                                        plane_weight.append(occ[segmentation == i].sum())
+                                        plane_clusters[i, 3] = (distance[segmentation == i].mean() * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
+                                        plane_param.append(plane_clusters[i])
+
+                                        # -----3D pooling-----
+                                        plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4))
+
+                                        segmentation[segmentation == i] = count
+                                        count += 1
+                                    else:
+                                        segmentation[segmentation == i] = -1
+                                else:
+                                    segmentation[segmentation == i] = -1
+
+                            else:
+                                plane_labels.append(occ.sum().long() * 0)
+                                plane_points.append(coords[segmentation == i])
+                                plane_occ.append(occ[segmentation == i].mean())
+                                plane_weight.append(occ[segmentation == i].sum())
+                                plane_clusters[i, 3] = (distance[segmentation == i].mean() * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
+                                plane_param.append(plane_clusters[i])
+                                # -----3D average pooling-----
+                                plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4))
+
+
+                            MPL_loss = self.compute_mean_planar_loss()
+                            total_MPL_loss += MPL_loss
+
+                loss_dict.update({f'MPL_loss_{i}': total_MPL_loss})
 
         return outputs, loss_dict
 
@@ -462,3 +544,23 @@ class RoomNet(nn.Module):
         # compute final combined loss
         loss = loss_weight[0] * occ_loss + loss_weight[1] * tsdf_loss
         return loss
+
+
+        def compute_offset_loss(self, offset, gt_offsets):
+
+            pt_diff = offset - gt_offsets  # (N, 3)
+            pt_dist = torch.sum(torch.abs(pt_diff), dim=-1)  # (N)
+            offset_norm_loss = torch.sum(pt_dist) / (pt_dist.shape[0] + 1e-6)
+            gt_offsets_norm = torch.norm(gt_offsets, p=2, dim=1)  # (N), float
+            gt_offsets_ = gt_offsets / (gt_offsets_norm.unsqueeze(-1) + 1e-8)
+            pt_offsets_norm = torch.norm(offset, p=2, dim=1)
+            pt_offsets_ = offset / (pt_offsets_norm.unsqueeze(-1) + 1e-8)
+            direction_diff = - (gt_offsets_ * pt_offsets_).sum(-1)  # (N)
+            offset_dir_loss = torch.sum(direction_diff) / (direction_diff.shape[0] + 1e-6)
+
+            return offset_norm_loss + offset_dir_loss
+
+
+        def compute_mean_planar_loss(self, coords, tsdf, plane, normal_target):
+            MPL = 0
+            return MPL
