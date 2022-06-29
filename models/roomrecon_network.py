@@ -250,10 +250,10 @@ class RoomNet(nn.Module):
 
             # -------compute loss-------
             if tsdf_target is not None and anchors_gt is not None and self.training:
-                loss = 0
-                # loss = self.compute_loss(tsdf, occ, tsdf_target, occ_target,
-                #                          mask=grid_mask,
-                #                          pos_weight=self.cfg.POS_WEIGHT)
+                loss = self.compute_loss(tsdf, occ, class_logits, residuals, distance, off_center,
+                                 tsdf_target, occ_target, label_target, anchors_gt, residual_gt,
+                                 planes_gt, mean_xyz_gt, r_coords, loss_weight=(1, 1, 1, 1, 1),
+                                 mask=None, pos_weight=self.cfg.POS_WEIGHT)
             else:
                 loss = torch.Tensor(np.array([0]))[0]
             loss_dict.update({f'combined_loss_{i}': loss})
@@ -302,8 +302,7 @@ class RoomNet(nn.Module):
                 idx = torch.arange(class_ids.shape[0], device=class_ids.device).long()
                 residuals_pred = residuals[occupancy][idx, class_ids]
                 normals = self.normal_anchors[class_ids] + residuals_pred
-                offset_points = r_coords[occupancy, :3] + 0.12 * distance[occupancy] * normals / torch.norm(normals, dim=1,
-                                                                                                     keepdim=True)
+                offset_points = r_coords[occupancy, :3] + 0.12 * distance[occupancy] * normals / torch.norm(normals, dim=1, keepdim=True)
                 D = -(offset_points.unsqueeze(1) @ normals.unsqueeze(2)).squeeze(1)
                 planes = torch.cat([normals, D], dim=1)
 
@@ -312,13 +311,9 @@ class RoomNet(nn.Module):
                 for b in range(bs):
                     # convert coordinate
                     ind = torch.nonzero(pre_coords[:, 0] == b, as_tuple=False).squeeze(1)
-                    planes[ind] = (inputs['world_to_aligned_camera'][b].transpose(0,
-                                                                            1) @ planes[ind].transpose(
-                        0, 1)).transpose(0, 1)
+                    planes[ind] = (inputs['world_to_aligned_camera'][b].transpose(0, 1) @ planes[ind].transpose(0, 1)).transpose(0, 1)
                     if anchors_gt is not None:
-                        planes_gt[b] = (inputs['world_to_aligned_camera'][b].transpose(0,
-                                                                                    1) @ planes_gt[b].transpose(
-                            0, 1)).transpose(0, 1)
+                        planes_gt[b] = (inputs['world_to_aligned_camera'][b].transpose(0, 1) @ planes_gt[b].transpose(0, 1)).transpose(0, 1)
 
                     center_points[ind] = center_points[ind] @ torch.inverse(inputs['world_to_aligned_camera'])[b].permute(1, 0).contiguous()
                 center_points = center_points[:, :3]
@@ -412,8 +407,11 @@ class RoomNet(nn.Module):
                                 plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4))
 
 
-                            MPL_loss = self.compute_mean_planar_loss()
-                            total_MPL_loss += MPL_loss
+                            # -----Calculate planar loss-----
+                            plane_gt = plane_gt[plane_labels]
+                            for p in range(len(plane_labels)):
+                                MPL_loss = self.compute_mean_planar_loss(plane_points[p], plane_gt[p][:, :3])
+                                total_MPL_loss += MPL_loss
 
                 loss_dict.update({f'MPL_loss_{i}': total_MPL_loss})
 
@@ -421,7 +419,7 @@ class RoomNet(nn.Module):
 
 
     def compute_loss(self, tsdf, occ, class_logits, residuals, distance, off_center,
-                     tsdf_target, occ_target, label_target,anchors_gt, residual_gt,
+                     tsdf_target, occ_target, label_target, anchors_gt, residual_gt,
                      planes_gt, mean_xyz, r_coords, loss_weight=(1, 1, 1, 1, 1),
                      mask=None, pos_weight=1.0):
         '''
@@ -542,7 +540,8 @@ class RoomNet(nn.Module):
         # compute Mean Planar Loss (for enforcing planarity) between matching voxels from estimated plane instances and tsdf
 
         # compute final combined loss
-        loss = loss_weight[0] * occ_loss + loss_weight[1] * tsdf_loss
+
+        loss = loss_weight[0] * occ_loss + loss_weight[1] * tsdf_loss + loss_weight[2] * class_loss + loss_weight[3] * residual_loss + loss_weight[4] * distance_loss + loss_weight[5] * off_loss
         return loss
 
 
@@ -561,6 +560,19 @@ class RoomNet(nn.Module):
             return offset_norm_loss + offset_dir_loss
 
 
-        def compute_mean_planar_loss(self, coords, tsdf, plane, normal_target):
-            MPL = 0
-            return MPL
+        def compute_mean_planar_loss(self, plane_points, normal_gt):
+            plane_points = plane_points.detach().numpy()
+            normal_gt = normal_gt.detach().numpy()
+            normal = calc_normal(plane_points)
+            loss = np.linalg.norm(normal - normal_gt, ord=1)
+            return loss
+
+        @staticmethod
+        def calc_normal(A):
+            '''An = b. Where A is a stacked matrix of 3d points in a patch,
+               n is the normal vector and b a 3d vector of ones.
+            '''
+            b = np.ones((len(A), 1))
+            n = np.linalg.inv(A.T @ A) @ A.T @ b
+            n /= np.linalg.norm(n, ord=2)
+            return n
