@@ -37,7 +37,7 @@ class ScanNetDataset(Dataset):
         self.max_cashe = 1
 
     def build_list(self):
-        with open(os.path.join(self.datapath, self.tsdf_file, 'fragments_{}.pkl'.format(self.mode)), 'rb') as f:
+        with open(os.path.join(self.datapath, self.planes_file, 'fragments_{}.pkl'.format(self.mode)), 'rb') as f:
             metas = pickle.load(f)
         # ---- Check if fragment files are equal or make a difference. ----
         # with open(os.path.join(self.datapath, self.planes_file, 'fragments_{}.pkl'.format(self.mode)), 'rb') as f:
