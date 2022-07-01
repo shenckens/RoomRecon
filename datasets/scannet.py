@@ -33,7 +33,7 @@ class ScanNetDataset(Dataset):
         self.tsdf_cashe = {}
         self.planes_cashe = {}
         # ---- max_cashe = 100 in NeuralRecon. ----
-        self.max_cache = 1
+        self.max_cache = 100
 
     def build_list(self):
         with open(os.path.join(self.datapath, self.tsdf_file, 'fragments_{}.pkl'.format(self.mode)), 'rb') as f:
