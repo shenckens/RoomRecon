@@ -252,8 +252,7 @@ class RoomNet(nn.Module):
             if tsdf_target is not None and anchors_gt is not None and self.training:
                 loss = self.compute_loss(tsdf, occ, class_logits, residuals, distance, off_center,
                                          tsdf_target, occ_target, label_target, anchors_gt, residual_gt,
-                                         planes_gt, mean_xyz_gt, r_coords, loss_weight=(
-                                             1, 1, 1, 1, 1),
+                                         planes_gt, mean_xyz_gt, r_coords, loss_weight=(1, 1, 1, 1, 1, 1),
                                          mask=None, pos_weight=self.cfg.POS_WEIGHT)
             else:
                 loss = torch.Tensor(np.array([0]))[0]
