@@ -384,7 +384,9 @@ class RoomNet(nn.Module):
                                 plane_label = labels[segmentation == i]
                                 plane_label = plane_label[plane_label != -1]
                                 if plane_label.shape[0] != 0:
-                                    bincount = torch.bincount(plane_label.cpu())
+                                    print('HERE IS THE PLANE LABELS PRINTED OUT @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+                                    print(plane_label)
+                                    bincount = torch.bincount(plane_label)
                                     label_ins = bincount.argmax()
                                     ratio = bincount[label_ins].float(
                                     ) / plane_label.shape[0]
