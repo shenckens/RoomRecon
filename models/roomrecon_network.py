@@ -439,7 +439,7 @@ class RoomNet(nn.Module):
     def compute_loss(self, tsdf, occ, class_logits, residuals, distance, off_center,
                      tsdf_target, occ_target, label_target, anchors_gt, residual_gt,
                      planes_gt, mean_xyz, r_coords, loss_weight=(
-                         1, 1, 1, 1, 1),
+                         1, 1, 1, 1, 1, 1),
                      mask=None, pos_weight=1.0):
         '''
         (EDIT DESCRIPTION BELOW)
