@@ -426,7 +426,10 @@ class RoomNet(nn.Module):
                                 #     0) / (occ[segmentation == i].sum() + 1e-4))
 
                             # -----Calculate planar loss-----
-                            print(plane_gt)
+                            print("SHAPESSSSSSSS")
+                            print('plane_gt', plane_gt.shape)
+                            print('plane_labels', plane_labels.shape)
+                            print('plane_points', plane_points.shape)
                             plane_gt = plane_gt[plane_labels]
                             for p in range(len(plane_labels)):
                                 MPL_loss = self.compute_mean_planar_loss(
