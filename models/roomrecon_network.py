@@ -28,8 +28,6 @@ class RoomNet(nn.Module):
                  + 10, 48 + 24 * alpha + 1 + 10, 24 + 24 + 1 + 10]
         channels = [96, 48, 24]
 
-
-
         # ---- to Edit for both NR and PR ----
 
         if self.cfg.FUSION.FUSION_ON:
@@ -198,7 +196,8 @@ class RoomNet(nn.Module):
                 feat = volume
 
             if not self.cfg.FUSION.FUSION_ON:
-                tsdf_target, label_target, occ_target = self.get_target(up_coords, inputs, scale)
+                tsdf_target, label_target, occ_target = self.get_target(
+                    up_coords, inputs, scale)
 
             # ----convert to aligned camera coordinate----
             r_coords = up_coords.detach().clone().float()
@@ -243,7 +242,6 @@ class RoomNet(nn.Module):
             else:
                 off_center = None
 
-
             # ------define the sparsity for the next stage-----
             occupancy = occ.squeeze(1) > self.cfg.THRESHOLDS[i]
             occupancy[grid_mask == False] = False
@@ -253,9 +251,10 @@ class RoomNet(nn.Module):
             # -------compute loss-------
             if tsdf_target is not None and anchors_gt is not None and self.training:
                 loss = self.compute_loss(tsdf, occ, class_logits, residuals, distance, off_center,
-                                 tsdf_target, occ_target, label_target, anchors_gt, residual_gt,
-                                 planes_gt, mean_xyz_gt, r_coords, loss_weight=(1, 1, 1, 1, 1),
-                                 mask=None, pos_weight=self.cfg.POS_WEIGHT)
+                                         tsdf_target, occ_target, label_target, anchors_gt, residual_gt,
+                                         planes_gt, mean_xyz_gt, r_coords, loss_weight=(
+                                             1, 1, 1, 1, 1),
+                                         mask=None, pos_weight=self.cfg.POS_WEIGHT)
             else:
                 loss = torch.Tensor(np.array([0]))[0]
             loss_dict.update({f'combined_loss_{i}': loss})
@@ -286,7 +285,8 @@ class RoomNet(nn.Module):
             pre_distance = distance[occupancy]
 
             # ---- Concatenate all new features for next layer. ----
-            pre_feat = torch.cat([pre_feat, pre_tsdf, pre_occ, pre_class, pre_distance], dim=1)
+            pre_feat = torch.cat(
+                [pre_feat, pre_tsdf, pre_occ, pre_class, pre_distance], dim=1)
 
             output_coord_ = pre_coords.detach().clone()
             output_coord_[:, 1:] = output_coord_[:, 1:] // 2 ** scale
@@ -301,59 +301,70 @@ class RoomNet(nn.Module):
                 # ----convert class, residuals to normals -----
                 class_probs = F.softmax(class_logits[occupancy], dim=-1)
                 class_ids = class_probs.argmax(-1)
-                idx = torch.arange(class_ids.shape[0], device=class_ids.device).long()
+                idx = torch.arange(
+                    class_ids.shape[0], device=class_ids.device).long()
                 residuals_pred = residuals[occupancy][idx, class_ids]
                 normals = self.normal_anchors[class_ids] + residuals_pred
-                offset_points = r_coords[occupancy, :3] + 0.12 * distance[occupancy] * normals / torch.norm(normals, dim=1, keepdim=True)
-                D = -(offset_points.unsqueeze(1) @ normals.unsqueeze(2)).squeeze(1)
+                offset_points = r_coords[occupancy, :3] + 0.12 * distance[occupancy] * \
+                    normals / torch.norm(normals, dim=1, keepdim=True)
+                D = -(offset_points.unsqueeze(1) @
+                      normals.unsqueeze(2)).squeeze(1)
                 planes = torch.cat([normals, D], dim=1)
 
                 center_points = r_coords[occupancy, :3] + off_center[occupancy]
-                center_points = torch.cat((center_points, torch.ones_like(center_points[:, :1])), dim=1)
+                center_points = torch.cat(
+                    (center_points, torch.ones_like(center_points[:, :1])), dim=1)
                 for b in range(bs):
                     # convert coordinate
-                    ind = torch.nonzero(pre_coords[:, 0] == b, as_tuple=False).squeeze(1)
-                    planes[ind] = (inputs['world_to_aligned_camera'][b].transpose(0, 1) @ planes[ind].transpose(0, 1)).transpose(0, 1)
+                    ind = torch.nonzero(
+                        pre_coords[:, 0] == b, as_tuple=False).squeeze(1)
+                    planes[ind] = (inputs['world_to_aligned_camera'][b].transpose(
+                        0, 1) @ planes[ind].transpose(0, 1)).transpose(0, 1)
                     if anchors_gt is not None:
-                        planes_gt[b] = (inputs['world_to_aligned_camera'][b].transpose(0, 1) @ planes_gt[b].transpose(0, 1)).transpose(0, 1)
+                        planes_gt[b] = (inputs['world_to_aligned_camera'][b].transpose(
+                            0, 1) @ planes_gt[b].transpose(0, 1)).transpose(0, 1)
 
-                    center_points[ind] = center_points[ind] @ torch.inverse(inputs['world_to_aligned_camera'])[b].permute(1, 0).contiguous()
+                    center_points[ind] = center_points[ind] @ torch.inverse(
+                        inputs['world_to_aligned_camera'])[b].permute(1, 0).contiguous()
                 center_points = center_points[:, :3]
 
                 # A,B,C,D,X,Y,Z,OCC for vote
                 # planes = planes[:, :3] # / planes[:, 3:]
-                embedding = torch.cat([planes[:, :3], center_points, planes[:, 3:], pre_occ], dim=1)
-
+                embedding = torch.cat(
+                    [planes[:, :3], center_points, planes[:, 3:], pre_occ], dim=1)
 
                 outputs['embedding'] = embedding
                 outputs['planes_gt'] = planes_gt
+                print('HERE IS THE PLANES GROUND TRUTH @@@@@@@@@@@@@@')
+                print(planes_gt)
                 outputs['feat'] = feat
 
                 # --- Coming from NR ----
                 outputs['coords'] = pre_coords
                 outputs['tsdf'] = pre_tsdf
 
-
                 # ---- cluster plane instances and calc MPL for each instance.
                 batch_size = len(inputs['fragment'])
                 for i in range(batch_size):
                     if 'embedding' not in outputs.keys():
-                            continue
-                    batch_ind = torch.nonzero(outputs['coords_'][-1][:, 0] == i, as_tuple=False).squeeze(1)
+                        continue
+                    batch_ind = torch.nonzero(
+                        outputs['coords_'][-1][:, 0] == i, as_tuple=False).squeeze(1)
                     mask0 = outputs['embedding'][batch_ind, :3].abs() < 2
                     mask0 = mask0.all(-1)
                     batch_ind = batch_ind[mask0]
-                    embedding, distance, occ = outputs['embedding'][batch_ind, :6], outputs['embedding'][batch_ind, 6:7], outputs['embedding'][batch_ind, 7:]
+                    embedding, distance, occ = outputs['embedding'][batch_ind,
+                                                                    :6], outputs['embedding'][batch_ind, 6:7], outputs['embedding'][batch_ind, 7:]
 
                     if self.training:
                         plane_gt = outputs['planes_gt'][i]
                         labels = outputs['label_target'][2][batch_ind]
 
-
                     # --------clustering------------
                     scale = embedding.max(dim=0)[0] - embedding.min(dim=0)[0]
                     embedding = embedding / scale
-                    segmentation, plane_clusters, invalid, _ = self.mean_shift(occ, embedding)
+                    segmentation, plane_clusters, invalid, _ = self.mean_shift(
+                        occ, embedding)
 
                     total_MPL_loss = 0
 
@@ -370,7 +381,6 @@ class RoomNet(nn.Module):
                         plane_features = []
                         coords = outputs['coords_'][-1][batch_ind, 1:]
 
-
                         for i in range(plane_clusters.shape[0]):
                             if self.training:
                                 # Generate matching ground truth
@@ -379,17 +389,23 @@ class RoomNet(nn.Module):
                                 if plane_label.shape[0] != 0:
                                     bincount = torch.bincount(plane_label)
                                     label_ins = bincount.argmax()
-                                    ratio = bincount[label_ins].float() / plane_label.shape[0]
+                                    ratio = bincount[label_ins].float(
+                                    ) / plane_label.shape[0]
                                     if ratio > 0.5 and label_ins not in plane_labels:
                                         plane_labels.append(label_ins)
-                                        plane_points.append(coords[segmentation == i])
-                                        plane_occ.append(occ[segmentation == i].mean())
-                                        plane_weight.append(occ[segmentation == i].sum())
-                                        plane_clusters[i, 3] = (distance[segmentation == i].mean() * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
+                                        plane_points.append(
+                                            coords[segmentation == i])
+                                        plane_occ.append(
+                                            occ[segmentation == i].mean())
+                                        plane_weight.append(
+                                            occ[segmentation == i].sum())
+                                        plane_clusters[i, 3] = (distance[segmentation == i].mean(
+                                        ) * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
                                         plane_param.append(plane_clusters[i])
 
                                         # -----3D pooling-----
-                                        plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4))
+                                        plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(
+                                            0) / (occ[segmentation == i].sum() + 1e-4))
 
                                         segmentation[segmentation == i] = count
                                         count += 1
@@ -402,27 +418,30 @@ class RoomNet(nn.Module):
                                 plane_labels.append(occ.sum().long() * 0)
                                 plane_points.append(coords[segmentation == i])
                                 plane_occ.append(occ[segmentation == i].mean())
-                                plane_weight.append(occ[segmentation == i].sum())
-                                plane_clusters[i, 3] = (distance[segmentation == i].mean() * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
+                                plane_weight.append(
+                                    occ[segmentation == i].sum())
+                                plane_clusters[i, 3] = (distance[segmentation == i].mean(
+                                ) * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
                                 plane_param.append(plane_clusters[i])
                                 # -----3D average pooling-----
-                                plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4))
-
+                                plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(
+                                    0) / (occ[segmentation == i].sum() + 1e-4))
 
                             # -----Calculate planar loss-----
                             plane_gt = plane_gt[plane_labels]
                             for p in range(len(plane_labels)):
-                                MPL_loss = self.compute_mean_planar_loss(plane_points[p], plane_gt[p][:, :3])
+                                MPL_loss = self.compute_mean_planar_loss(
+                                    plane_points[p], plane_gt[p][:, :3])
                                 total_MPL_loss += MPL_loss
 
                 loss_dict.update({f'MPL_loss_{i}': total_MPL_loss})
 
         return outputs, loss_dict
 
-
     def compute_loss(self, tsdf, occ, class_logits, residuals, distance, off_center,
                      tsdf_target, occ_target, label_target, anchors_gt, residual_gt,
-                     planes_gt, mean_xyz, r_coords, loss_weight=(1, 1, 1, 1, 1),
+                     planes_gt, mean_xyz, r_coords, loss_weight=(
+                         1, 1, 1, 1, 1),
                      mask=None, pos_weight=1.0):
         '''
         (EDIT DESCRIPTION BELOW)
@@ -485,23 +504,29 @@ class RoomNet(nn.Module):
 
             # extract gt for planes
             bs = len(anchors_gt)
-            anchors_target = torch.zeros([label_target.shape[0]], device=label_target.device).long()
-            residual_target = torch.zeros([label_target.shape[0], 3], device=label_target.device)
-            planes_target = torch.zeros([label_target.shape[0], 4], device=label_target.device)
+            anchors_target = torch.zeros(
+                [label_target.shape[0]], device=label_target.device).long()
+            residual_target = torch.zeros(
+                [label_target.shape[0], 3], device=label_target.device)
+            planes_target = torch.zeros(
+                [label_target.shape[0], 4], device=label_target.device)
             for b in range(bs):
-                batch_ind = torch.nonzero(r_coords[:, -1] == b, as_tuple=False).squeeze(1)
+                batch_ind = torch.nonzero(
+                    r_coords[:, -1] == b, as_tuple=False).squeeze(1)
                 anchors_target[batch_ind] = anchors_gt[b][label_target[batch_ind]]
                 residual_target[batch_ind] = residual_gt[b][label_target[batch_ind]]
                 planes_target[batch_ind] = planes_gt[b][label_target[batch_ind]]
 
-
             class_loss = F.cross_entropy(class_logits, anchors_target)
-            idx = torch.arange(residuals.shape[0], device=residuals.device).long()
+            idx = torch.arange(
+                residuals.shape[0], device=residuals.device).long()
             residuals_roi = residuals[idx, anchors_target]
-            residual_loss = F.smooth_l1_loss(residuals_roi * 20, residual_target * 20)
+            residual_loss = F.smooth_l1_loss(
+                residuals_roi * 20, residual_target * 20)
 
             # ----distance loss-----
-            coords = torch.cat([r_coords[:, :3], torch.ones_like(r_coords[:, :1])], dim=1)
+            coords = torch.cat(
+                [r_coords[:, :3], torch.ones_like(r_coords[:, :1])], dim=1)
             planes_target = planes_target / (- planes_target[:, 3:4])
             distance_gt = - (coords.unsqueeze(1) @ planes_target.unsqueeze(-1)).squeeze() / torch.norm(
                planes_target[:, :3],
@@ -515,13 +540,17 @@ class RoomNet(nn.Module):
                 # compute offset loss
                 # pt_offsets: (N, 3), float, cuda
                 # coords: (N, 3), float32
-                mean_xyz_target = torch.zeros([label_target.shape[0], 3], device=label_target.device)
+                mean_xyz_target = torch.zeros(
+                    [label_target.shape[0], 3], device=label_target.device)
                 for b in range(bs):
-                    batch_ind = torch.nonzero(r_coords[:, -1] == b, as_tuple=False).squeeze(1)
+                    batch_ind = torch.nonzero(
+                        r_coords[:, -1] == b, as_tuple=False).squeeze(1)
                     unique_ins = torch.unique(label_target[batch_ind])
                     for ins in unique_ins:
-                        batch_ins_ind = torch.nonzero(label_target[batch_ind] == ins, as_tuple=False).squeeze(1)
-                        mean_xyz_target[batch_ind[batch_ins_ind]] = r_coords[batch_ind[batch_ins_ind], :3].mean(0)
+                        batch_ins_ind = torch.nonzero(
+                            label_target[batch_ind] == ins, as_tuple=False).squeeze(1)
+                        mean_xyz_target[batch_ind[batch_ins_ind]
+                                        ] = r_coords[batch_ind[batch_ins_ind], :3].mean(0)
 
                 # mean_xyz_target = torch.zeros([label_target.shape[0], 3], device=label_target.device)
                 # for b in range(bs):
@@ -531,21 +560,22 @@ class RoomNet(nn.Module):
                 r_coords = r_coords[:, :3]
 
                 gt_offsets_center = mean_xyz_target - r_coords  # (N, 3)
-                off_loss = self.compute_offset_loss(off_center, gt_offsets_center)
+                off_loss = self.compute_offset_loss(
+                    off_center, gt_offsets_center)
 
             else:
                 off_loss = 0
         else:
             class_loss = residual_loss = off_loss = 0
 
-
         # compute Mean Planar Loss (for enforcing planarity) between matching voxels from estimated plane instances and tsdf
 
         # compute final combined loss
 
-        loss = loss_weight[0] * occ_loss + loss_weight[1] * tsdf_loss + loss_weight[2] * class_loss + loss_weight[3] * residual_loss + loss_weight[4] * distance_loss + loss_weight[5] * off_loss
+        loss = loss_weight[0] * occ_loss + loss_weight[1] * tsdf_loss + loss_weight[2] * class_loss + \
+            loss_weight[3] * residual_loss + loss_weight[4] * \
+            distance_loss + loss_weight[5] * off_loss
         return loss
-
 
         def compute_offset_loss(self, offset, gt_offsets):
 
@@ -557,10 +587,10 @@ class RoomNet(nn.Module):
             pt_offsets_norm = torch.norm(offset, p=2, dim=1)
             pt_offsets_ = offset / (pt_offsets_norm.unsqueeze(-1) + 1e-8)
             direction_diff = - (gt_offsets_ * pt_offsets_).sum(-1)  # (N)
-            offset_dir_loss = torch.sum(direction_diff) / (direction_diff.shape[0] + 1e-6)
+            offset_dir_loss = torch.sum(
+                direction_diff) / (direction_diff.shape[0] + 1e-6)
 
             return offset_norm_loss + offset_dir_loss
-
 
         def compute_mean_planar_loss(self, plane_points, normal_gt):
             plane_points = plane_points.detach().numpy()
