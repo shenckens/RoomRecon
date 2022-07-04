@@ -512,8 +512,8 @@ class RoomNet(nn.Module):
                 batch_ind = torch.nonzero(
                     r_coords[:, -1] == b, as_tuple=False).squeeze(1)
                 anchors_target[batch_ind] = anchors_gt[b][label_target.long()[batch_ind]]
-                residual_target[batch_ind] = residual_gt[b][label_target[batch_ind]]
-                planes_target[batch_ind] = planes_gt[b][label_target[batch_ind]]
+                residual_target[batch_ind] = residual_gt[b][label_target.long()[batch_ind]]
+                planes_target[batch_ind] = planes_gt[b][label_target.long()[batch_ind]]
 
             class_loss = F.cross_entropy(class_logits, anchors_target)
             idx = torch.arange(
