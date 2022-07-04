@@ -438,8 +438,7 @@ class RoomNet(nn.Module):
 
     def compute_loss(self, tsdf, occ, class_logits, residuals, distance, off_center,
                      tsdf_target, occ_target, label_target, anchors_gt, residual_gt,
-                     planes_gt, mean_xyz, r_coords, loss_weight=(
-                         1, 1, 1, 1, 1, 1),
+                     planes_gt, mean_xyz, r_coords, loss_weight=(1, 1, 1, 1, 1, 1),
                      mask=None, pos_weight=1.0):
         '''
         (EDIT DESCRIPTION BELOW)
@@ -571,8 +570,7 @@ class RoomNet(nn.Module):
         # compute final combined loss
 
         loss = loss_weight[0] * occ_loss + loss_weight[1] * tsdf_loss + loss_weight[2] * class_loss + \
-            loss_weight[3] * residual_loss + loss_weight[4] * \
-            distance_loss + loss_weight[5] * off_loss
+            loss_weight[3] * residual_loss + loss_weight[4] * distance_loss + loss_weight[5] * off_loss
         return loss
 
         def compute_offset_loss(self, offset, gt_offsets):
