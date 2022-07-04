@@ -335,8 +335,6 @@ class RoomNet(nn.Module):
 
                 outputs['embedding'] = embedding
                 outputs['planes_gt'] = planes_gt
-                print('HERE IS THE PLANES GROUND TRUTH @@@@@@@@@@@@@@')
-                print(planes_gt)
                 outputs['feat'] = feat
 
                 # --- Coming from NR ----

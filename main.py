@@ -108,6 +108,7 @@ transform += [transforms.ResizeImage((640, 480)),
                   cfg.MODEL.N_VOX, cfg.MODEL.VOXEL_SIZE, random_rotation, random_translation,
                   paddingXY, paddingZ, max_epoch=cfg.TRAIN.EPOCHS),
               transforms.IntrinsicsPoseToProjection(n_views, 4),
+              transforms.GeneratePlaneGT(cfg.MODEL.NORMAL_ANCHOR_PATH)
               ]
 
 transforms = transforms.Compose(transform)
