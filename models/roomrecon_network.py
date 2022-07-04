@@ -384,8 +384,6 @@ class RoomNet(nn.Module):
                                 plane_label = labels[segmentation == i]
                                 plane_label = plane_label[plane_label != -1].type(torch.IntTensor)
                                 if plane_label.shape[0] != 0:
-                                    print('HERE IS THE PLANE LABELS PRINTED OUT @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-                                    print(plane_label)
                                     bincount = torch.bincount(plane_label)
                                     label_ins = bincount.argmax()
                                     ratio = bincount[label_ins].float(
@@ -402,9 +400,9 @@ class RoomNet(nn.Module):
                                         ) * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
                                         plane_param.append(plane_clusters[i])
 
-                                        # -----3D pooling-----
-                                        plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(
-                                            0) / (occ[segmentation == i].sum() + 1e-4))
+                                        # # -----3D pooling-----
+                                        # plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(
+                                        #     0) / (occ[segmentation == i].sum() + 1e-4))
 
                                         segmentation[segmentation == i] = count
                                         count += 1
@@ -422,9 +420,9 @@ class RoomNet(nn.Module):
                                 plane_clusters[i, 3] = (distance[segmentation == i].mean(
                                 ) * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
                                 plane_param.append(plane_clusters[i])
-                                # -----3D average pooling-----
-                                plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(
-                                    0) / (occ[segmentation == i].sum() + 1e-4))
+                                # # -----3D average pooling-----
+                                # plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(
+                                #     0) / (occ[segmentation == i].sum() + 1e-4))
 
                             # -----Calculate planar loss-----
                             plane_gt = plane_gt[plane_labels]
