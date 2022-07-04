@@ -572,34 +572,34 @@ class RoomNet(nn.Module):
             loss_weight[3] * residual_loss + loss_weight[4] * distance_loss + loss_weight[5] * off_loss
         return loss
 
-        def compute_offset_loss(self, offset, gt_offsets):
+    def compute_offset_loss(self, offset, gt_offsets):
 
-            pt_diff = offset - gt_offsets  # (N, 3)
-            pt_dist = torch.sum(torch.abs(pt_diff), dim=-1)  # (N)
-            offset_norm_loss = torch.sum(pt_dist) / (pt_dist.shape[0] + 1e-6)
-            gt_offsets_norm = torch.norm(gt_offsets, p=2, dim=1)  # (N), float
-            gt_offsets_ = gt_offsets / (gt_offsets_norm.unsqueeze(-1) + 1e-8)
-            pt_offsets_norm = torch.norm(offset, p=2, dim=1)
-            pt_offsets_ = offset / (pt_offsets_norm.unsqueeze(-1) + 1e-8)
-            direction_diff = - (gt_offsets_ * pt_offsets_).sum(-1)  # (N)
-            offset_dir_loss = torch.sum(
-                direction_diff) / (direction_diff.shape[0] + 1e-6)
+        pt_diff = offset - gt_offsets  # (N, 3)
+        pt_dist = torch.sum(torch.abs(pt_diff), dim=-1)  # (N)
+        offset_norm_loss = torch.sum(pt_dist) / (pt_dist.shape[0] + 1e-6)
+        gt_offsets_norm = torch.norm(gt_offsets, p=2, dim=1)  # (N), float
+        gt_offsets_ = gt_offsets / (gt_offsets_norm.unsqueeze(-1) + 1e-8)
+        pt_offsets_norm = torch.norm(offset, p=2, dim=1)
+        pt_offsets_ = offset / (pt_offsets_norm.unsqueeze(-1) + 1e-8)
+        direction_diff = - (gt_offsets_ * pt_offsets_).sum(-1)  # (N)
+        offset_dir_loss = torch.sum(
+            direction_diff) / (direction_diff.shape[0] + 1e-6)
 
-            return offset_norm_loss + offset_dir_loss
+        return offset_norm_loss + offset_dir_loss
 
-        def compute_mean_planar_loss(self, plane_points, normal_gt):
-            plane_points = plane_points.detach().numpy()
-            normal_gt = normal_gt.detach().numpy()
-            normal = calc_normal(plane_points)
-            loss = np.linalg.norm(normal - normal_gt, ord=1)
-            return loss
+    def compute_mean_planar_loss(self, plane_points, normal_gt):
+        plane_points = plane_points.detach().numpy()
+        normal_gt = normal_gt.detach().numpy()
+        normal = self.calc_normal(plane_points)
+        loss = np.linalg.norm(normal - normal_gt, ord=1)
+        return loss
 
-        @staticmethod
-        def calc_normal(A):
-            '''An = b. Where A is a stacked matrix of 3d points in a patch,
-               n is the normal vector and b a 3d vector of ones.
-            '''
-            b = np.ones((len(A), 1))
-            n = np.linalg.inv(A.T @ A) @ A.T @ b
-            n /= np.linalg.norm(n, ord=2)
-            return n
+    @staticmethod
+    def calc_normal(A):
+        '''An = b. Where A is a stacked matrix of 3d points in a patch,
+           n is the normal vector and b a 3d vector of ones.
+        '''
+        b = np.ones((len(A), 1))
+        n = np.linalg.inv(A.T @ A) @ A.T @ b
+        n /= np.linalg.norm(n, ord=2)
+        return n
