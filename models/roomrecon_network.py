@@ -382,7 +382,7 @@ class RoomNet(nn.Module):
                             if self.training:
                                 # Generate matching ground truth
                                 plane_label = labels[segmentation == i]
-                                plane_label = plane_label[plane_label != -1]
+                                plane_label = plane_label[plane_label != -1].type(torch.IntTensor)
                                 if plane_label.shape[0] != 0:
                                     print('HERE IS THE PLANE LABELS PRINTED OUT @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
                                     print(plane_label)
