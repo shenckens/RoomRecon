@@ -378,6 +378,7 @@ class RoomNet(nn.Module):
                         plane_features = []
                         coords = outputs['coords_'][-1][batch_ind, 1:]
 
+                        cnt = 0
                         for i in range(plane_clusters.shape[0]):
                             if self.training:
                                 # Generate matching ground truth
@@ -404,8 +405,8 @@ class RoomNet(nn.Module):
                                         # plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(
                                         #     0) / (occ[segmentation == i].sum() + 1e-4))
 
-                                        segmentation[segmentation == i] = count
-                                        count += 1
+                                        segmentation[segmentation == i] = cnt
+                                        cnt += 1
                                     else:
                                         segmentation[segmentation == i] = -1
                                 else:
