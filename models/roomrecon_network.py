@@ -428,7 +428,7 @@ class RoomNet(nn.Module):
                             # -----Calculate planar loss-----
                             print("SHAPESSSSSSSS")
                             print('plane_gt', plane_gt.shape)
-                            print('plane_labels', plane_labels.shape)
+                            print('plane_labels', len(plane_labels))
                             print('plane_points', plane_points.shape)
                             plane_gt = plane_gt[plane_labels]
                             for p in range(len(plane_labels)):
