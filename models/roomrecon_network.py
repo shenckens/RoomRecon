@@ -25,8 +25,10 @@ class RoomNet(nn.Module):
 
         alpha = int(self.cfg.BACKBONE2D.ARC.split('-')[-1])
         ch_in = [80 * alpha + 1, 96 + 40 * alpha + 1
-                 + 9, 48 + 24 * alpha + 1 + 9, 24 + 24 + 1 + 9]
+                 + 10, 48 + 24 * alpha + 1 + 10, 24 + 24 + 1 + 10]
         channels = [96, 48, 24]
+
+
 
         # ---- to Edit for both NR and PR ----
 
