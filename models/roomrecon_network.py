@@ -329,6 +329,8 @@ class RoomNet(nn.Module):
 
                 print("HERE THEY AREEEFJNKSJNJGD")
                 print(planes.shape)
+                print(pre_coords.shape)
+                print(pre_occ.shape)
                 print(planes_gt.shape)
                 planar_loss = self.calculate_planar_loss(planes[:, :3], planes[:, 3:], planes_gt[:, :3], planes_gt[:, 3:])
 
