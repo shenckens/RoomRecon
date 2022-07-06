@@ -340,6 +340,18 @@ class RoomNet(nn.Module):
                 outputs['coords'] = pre_coords
                 outputs['tsdf'] = pre_tsdf
 
+                print('THESE ARE THE COORDS_ PER PLANE I GUESSS')
+                print(outputs['coords_'])
+                print("this is the first element")
+                print(outputs['coords_'][0])
+                print(" ")
+                print('THESE ARE THE COORDS for the TSDF')
+                print(outputs['coords'])
+                print('first element')
+                print(outputs['coords'][0])
+
+                print("END OF TEST")
+
                 # ---- cluster plane instances and calc MPL for each instance.
                 batch_size = len(inputs['fragment'])
                 for i in range(batch_size):
