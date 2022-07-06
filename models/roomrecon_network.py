@@ -327,10 +327,18 @@ class RoomNet(nn.Module):
                         inputs['world_to_aligned_camera'])[b].permute(1, 0).contiguous()
                 center_points = center_points[:, :3]
 
+                print("HERE THEY AREEEFJNKSJNJGD")
+                print(planes.shape)
+                print(planes_gt.shape)
+                planar_loss = self.calculate_planar_loss(planes[:, :3], planes[:, 3:], planes_gt[:, :3], planes_gt[:, 3:])
+
                 # A,B,C,D,X,Y,Z,OCC for vote
                 # planes = planes[:, :3] # / planes[:, 3:]
                 embedding = torch.cat(
                     [planes[:, :3], center_points, planes[:, 3:], pre_occ], dim=1)
+
+
+
 
                 outputs['embedding'] = embedding
                 outputs['planes_gt'] = planes_gt
@@ -340,145 +348,148 @@ class RoomNet(nn.Module):
                 outputs['coords'] = pre_coords
                 outputs['tsdf'] = pre_tsdf
 
-                print('THESE ARE THE COORDS_ PER PLANE I GUESSS')
-                print(outputs['coords_'])
-                print("this is the first element")
-                print(outputs['coords_'][0])
-                print(" ")
-                print('THESE ARE THE COORDS for the TSDF')
-                print(outputs['coords'])
-                print('first element')
-                print(outputs['coords'][0])
 
-                print("END OF TEST")
 
-                # ---- cluster plane instances and calc MPL for each instance.
-                batch_size = len(inputs['fragment'])
-                for i in range(batch_size):
-                    if 'embedding' not in outputs.keys():
-                        continue
-                    batch_ind = torch.nonzero(
-                        outputs['coords_'][-1][:, 0] == i, as_tuple=False).squeeze(1)
-                    mask0 = outputs['embedding'][batch_ind, :3].abs() < 2
-                    mask0 = mask0.all(-1)
-                    batch_ind = batch_ind[mask0]
-                    embedding, distance, occ = outputs['embedding'][batch_ind,
-                                                                    :6], outputs['embedding'][batch_ind, 6:7], outputs['embedding'][batch_ind, 7:]
 
-                    if self.training:
-                        plane_gt = outputs['planes_gt'][i]
-                        labels = outputs['label_target'][2][batch_ind]
-
-                        print(f' batch={i}\n plane_gt={plane_gt}\n labels={labels}')
-
-                    # --------clustering------------
-                    scale = embedding.max(dim=0)[0] - embedding.min(dim=0)[0]
-                    embedding = embedding / scale
-                    segmentation, plane_clusters, invalid, _ = self.mean_shift(
-                        occ, embedding)
-
-                    total_MPL_loss = 0
-
-                    print("HERE IS THE SEGMENTATION")
-                    print(segmentation.shape)
-                    print(segmentation)
-                    print("END OF SEGMENTATION")
-
-                    print("CLUSTERS")
-                    print(plane_clusters.shape)
-                    print(plane_clusters)
-                    print(plane_clusters[0])
-
-                    print('INVALID')
-                    print(invalid.shape)
-                    print(invalid)
-
-                    if segmentation is not None:
-                        segmentation = segmentation.argmax(-1)
-                        segmentation[invalid] = -1
-                        plane_clusters = (plane_clusters * scale)[:, :4]
-
-                        print("HERE IS THE SEGMENTATION")
-                        print(segmentation.shape)
-                        print(segmentation)
-                        print("END OF SEGMENTATION")
-
-                        print("CLUSTERS")
-                        print(plane_clusters.shape)
-                        print(plane_clusters)
-                        print(plane_clusters[0])
-
-                        plane_points = []
-                        plane_labels = []
-                        plane_occ = []
-                        plane_weight = []
-                        plane_param = []
-                        plane_features = []
-                        coords = outputs['coords_'][-1][batch_ind, 1:]
-
-                        cnt = 0
-                        for i in range(plane_clusters.shape[0]):
-                            if self.training:
-                                # Generate matching ground truth
-                                plane_label = labels[segmentation == i]
-                                plane_label = plane_label[plane_label != -1].type(torch.IntTensor)
-                                if plane_label.shape[0] != 0:
-                                    bincount = torch.bincount(plane_label)
-                                    label_ins = bincount.argmax()
-                                    ratio = bincount[label_ins].float(
-                                    ) / plane_label.shape[0]
-                                    if ratio > 0.5 and label_ins not in plane_labels:
-                                        plane_labels.append(label_ins)
-                                        plane_points.append(
-                                            coords[segmentation == i])
-                                        plane_occ.append(
-                                            occ[segmentation == i].mean())
-                                        plane_weight.append(
-                                            occ[segmentation == i].sum())
-                                        plane_clusters[i, 3] = (distance[segmentation == i].mean(
-                                        ) * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
-                                        plane_param.append(plane_clusters[i])
-
-                                        # # -----3D pooling-----
-                                        # plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(
-                                        #     0) / (occ[segmentation == i].sum() + 1e-4))
-
-                                        segmentation[segmentation == i] = cnt
-                                        cnt += 1
-                                    else:
-                                        segmentation[segmentation == i] = -1
-                                else:
-                                    segmentation[segmentation == i] = -1
-
-                            else:
-                                plane_labels.append(occ.sum().long() * 0)
-                                plane_points.append(coords[segmentation == i])
-                                plane_occ.append(occ[segmentation == i].mean())
-                                plane_weight.append(
-                                    occ[segmentation == i].sum())
-                                plane_clusters[i, 3] = (distance[segmentation == i].mean(
-                                ) * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
-                                plane_param.append(plane_clusters[i])
-                                # # -----3D average pooling-----
-                                # plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(
-                                #     0) / (occ[segmentation == i].sum() + 1e-4))
-
-                            # -----Calculate planar loss-----
-                            print("SHAPESSSSSSSS")
-                            print('plane_gt', plane_gt.shape)
-                            print('plane_labels', len(plane_labels))
-                            print(plane_labels)
-                            print('plane_points', len(plane_points))
-                            print(plane_points[0])
-                            plane_gt = plane_gt[plane_labels]
-                            for p in range(len(plane_labels)):
-                                MPL_loss = self.compute_mean_planar_loss(
-                                    plane_points[p], plane_gt[plane_labels[p]][:3])
-                                print('@@@HERE IS THE MPL LOSS@@@@', MPL_loss)
-                                total_MPL_loss += MPL_loss
-                                print('total loss', total_MPL_loss)
-
-                loss_dict.update({f'MPL_loss_{i}': total_MPL_loss})
+                # print('THESE ARE THE COORDS_ PER PLANE I GUESSS')
+                # print(outputs['coords_'])
+                # print("this is the first element")
+                # print(outputs['coords_'][0])
+                # print(" ")
+                # print('THESE ARE THE COORDS for the TSDF')
+                # print(outputs['coords'])
+                # print('first element')
+                # print(outputs['coords'][0])
+                #
+                # print("END OF TEST")
+                #
+                # # ---- cluster plane instances and calc MPL for each instance.
+                # batch_size = len(inputs['fragment'])
+                # for i in range(batch_size):
+                #     if 'embedding' not in outputs.keys():
+                #         continue
+                #     batch_ind = torch.nonzero(
+                #         outputs['coords_'][-1][:, 0] == i, as_tuple=False).squeeze(1)
+                #     mask0 = outputs['embedding'][batch_ind, :3].abs() < 2
+                #     mask0 = mask0.all(-1)
+                #     batch_ind = batch_ind[mask0]
+                #     embedding, distance, occ = outputs['embedding'][batch_ind,
+                #                                                     :6], outputs['embedding'][batch_ind, 6:7], outputs['embedding'][batch_ind, 7:]
+                #
+                #     if self.training:
+                #         plane_gt = outputs['planes_gt'][i]
+                #         labels = outputs['label_target'][2][batch_ind]
+                #
+                #         print(f' batch={i}\n plane_gt={plane_gt}\n labels={labels}')
+                #
+                #     # --------clustering------------
+                #     scale = embedding.max(dim=0)[0] - embedding.min(dim=0)[0]
+                #     embedding = embedding / scale
+                #     segmentation, plane_clusters, invalid, _ = self.mean_shift(
+                #         occ, embedding)
+                #
+                #     total_MPL_loss = 0
+                #
+                #     print("HERE IS THE SEGMENTATION")
+                #     print(segmentation.shape)
+                #     print(segmentation)
+                #     print("END OF SEGMENTATION")
+                #
+                #     print("CLUSTERS")
+                #     print(plane_clusters.shape)
+                #     print(plane_clusters)
+                #     print(plane_clusters[0])
+                #
+                #     print('INVALID')
+                #     print(invalid.shape)
+                #     print(invalid)
+                #
+                #     if segmentation is not None:
+                #         segmentation = segmentation.argmax(-1)
+                #         segmentation[invalid] = -1
+                #         plane_clusters = (plane_clusters * scale)[:, :4]
+                #
+                #         print("HERE IS THE SEGMENTATION")
+                #         print(segmentation.shape)
+                #         print(segmentation)
+                #         print("END OF SEGMENTATION")
+                #
+                #         print("CLUSTERS")
+                #         print(plane_clusters.shape)
+                #         print(plane_clusters)
+                #         print(plane_clusters[0])
+                #
+                #         plane_points = []
+                #         plane_labels = []
+                #         plane_occ = []
+                #         plane_weight = []
+                #         plane_param = []
+                #         plane_features = []
+                #         coords = outputs['coords_'][-1][batch_ind, 1:]
+                #
+                #         cnt = 0
+                #         for i in range(plane_clusters.shape[0]):
+                #             if self.training:
+                #                 # Generate matching ground truth
+                #                 plane_label = labels[segmentation == i]
+                #                 plane_label = plane_label[plane_label != -1].type(torch.IntTensor)
+                #                 if plane_label.shape[0] != 0:
+                #                     bincount = torch.bincount(plane_label)
+                #                     label_ins = bincount.argmax()
+                #                     ratio = bincount[label_ins].float(
+                #                     ) / plane_label.shape[0]
+                #                     if ratio > 0.5 and label_ins not in plane_labels:
+                #                         plane_labels.append(label_ins)
+                #                         plane_points.append(
+                #                             coords[segmentation == i])
+                #                         plane_occ.append(
+                #                             occ[segmentation == i].mean())
+                #                         plane_weight.append(
+                #                             occ[segmentation == i].sum())
+                #                         plane_clusters[i, 3] = (distance[segmentation == i].mean(
+                #                         ) * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
+                #                         plane_param.append(plane_clusters[i])
+                #
+                #                         # # -----3D pooling-----
+                #                         # plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(
+                #                         #     0) / (occ[segmentation == i].sum() + 1e-4))
+                #
+                #                         segmentation[segmentation == i] = cnt
+                #                         cnt += 1
+                #                     else:
+                #                         segmentation[segmentation == i] = -1
+                #                 else:
+                #                     segmentation[segmentation == i] = -1
+                #
+                #             else:
+                #                 plane_labels.append(occ.sum().long() * 0)
+                #                 plane_points.append(coords[segmentation == i])
+                #                 plane_occ.append(occ[segmentation == i].mean())
+                #                 plane_weight.append(
+                #                     occ[segmentation == i].sum())
+                #                 plane_clusters[i, 3] = (distance[segmentation == i].mean(
+                #                 ) * occ[segmentation == i]).sum(0) / (occ[segmentation == i].sum() + 1e-4)
+                #                 plane_param.append(plane_clusters[i])
+                #                 # # -----3D average pooling-----
+                #                 # plane_features.append((feat[segmentation == i] * occ[segmentation == i]).sum(
+                #                 #     0) / (occ[segmentation == i].sum() + 1e-4))
+                #
+                #             # -----Calculate planar loss-----
+                #             print("SHAPESSSSSSSS")
+                #             print('plane_gt', plane_gt.shape)
+                #             print('plane_labels', len(plane_labels))
+                #             print(plane_labels)
+                #             print('plane_points', len(plane_points))
+                #             print(plane_points[0])
+                #             plane_gt = plane_gt[plane_labels]
+                #             for p in range(len(plane_labels)):
+                #                 MPL_loss = self.compute_mean_planar_loss(
+                #                     plane_points[p], plane_gt[plane_labels[p]][:3])
+                #                 print('@@@HERE IS THE MPL LOSS@@@@', MPL_loss)
+                #                 total_MPL_loss += MPL_loss
+                #                 print('total loss', total_MPL_loss)
+                #
+                # loss_dict.update({f'MPL_loss_{i}': total_MPL_loss})
 
         return outputs, loss_dict
 
