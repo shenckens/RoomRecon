@@ -377,6 +377,20 @@ class RoomNet(nn.Module):
 
                     total_MPL_loss = 0
 
+                    print("HERE IS THE SEGMENTATION")
+                    print(segmentation.shape)
+                    print(segmentation)
+                    print("END OF SEGMENTATION")
+
+                    print("CLUSTERS")
+                    print(plane_clusters.shape)
+                    print(plane_clusters)
+                    print(plane_clusters[0])
+
+                    print('INVALID')
+                    print(invalid.shape)
+                    print(invalid)
+
                     if segmentation is not None:
                         segmentation = segmentation.argmax(-1)
                         segmentation[invalid] = -1
