@@ -471,7 +471,7 @@ class RoomNet(nn.Module):
                             plane_gt = plane_gt[plane_labels]
                             for p in range(len(plane_labels)):
                                 MPL_loss = self.compute_mean_planar_loss(
-                                    plane_points[p], plane_gt[p][:, :3])
+                                    plane_points[p], plane_gt[plane_labels[p]][:3])
                                 print('@@@HERE IS THE MPL LOSS@@@@', MPL_loss)
                                 total_MPL_loss += MPL_loss
                                 print('total loss', total_MPL_loss)
