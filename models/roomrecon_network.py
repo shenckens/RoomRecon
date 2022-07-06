@@ -328,10 +328,13 @@ class RoomNet(nn.Module):
                 center_points = center_points[:, :3]
 
                 print("HERE THEY AREEEFJNKSJNJGD")
-                print(planes.shape)
-                print(pre_coords.shape)
-                print(pre_occ.shape)
-                print(planes_gt.shape)
+                print('planes', planes.shape)
+                print('planes[0]', planes[0])
+                print('pre_coords', pre_coords.shape)
+                print('pre_coords[0]', pre_coords[0])
+                print('pre_occ', pre_occ.shape)
+                print('pre_occ[0]', pre_occ[0])
+                print('planes_gt', planes_gt.shape)
                 planar_loss = self.calculate_planar_loss(planes[:, :3], planes[:, 3:], planes_gt[:, :3], planes_gt[:, 3:])
 
                 # A,B,C,D,X,Y,Z,OCC for vote
