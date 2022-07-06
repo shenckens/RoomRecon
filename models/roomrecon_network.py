@@ -369,6 +369,8 @@ class RoomNet(nn.Module):
                         plane_gt = outputs['planes_gt'][i]
                         labels = outputs['label_target'][2][batch_ind]
 
+                        print(f' batch={i}\n plane_gt={plane_gt}\n labels={labels}')
+
                     # --------clustering------------
                     scale = embedding.max(dim=0)[0] - embedding.min(dim=0)[0]
                     embedding = embedding / scale
