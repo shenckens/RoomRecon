@@ -396,6 +396,16 @@ class RoomNet(nn.Module):
                         segmentation[invalid] = -1
                         plane_clusters = (plane_clusters * scale)[:, :4]
 
+                        print("HERE IS THE SEGMENTATION")
+                        print(segmentation.shape)
+                        print(segmentation)
+                        print("END OF SEGMENTATION")
+
+                        print("CLUSTERS")
+                        print(plane_clusters.shape)
+                        print(plane_clusters)
+                        print(plane_clusters[0])
+
                         plane_points = []
                         plane_labels = []
                         plane_occ = []
