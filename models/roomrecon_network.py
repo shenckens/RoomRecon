@@ -328,8 +328,10 @@ class RoomNet(nn.Module):
                 center_points = center_points[:, :3]
 
                 print("HERE THEY AREEEFJNKSJNJGD")
-                print('tsdf', tsdf.shape)
-                print('tsdf[0]', tsdf[0])
+                print('tsdf', pre_tsdf.shape)
+                print('tsdf[0]', pre_tsdf[0])
+                print('center_points', center_points.shape)
+                print('center_points[0]', center_points[0])
                 print('planes', planes.shape)
                 print('planes[0]', planes[0])
                 print('pre_coords', pre_coords.shape)
