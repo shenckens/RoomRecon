@@ -11,7 +11,7 @@ from tensorboardX import SummaryWriter
 from loguru import logger
 
 from utils import tensor2float, save_scalars, DictAverageMeter, SaveScene, make_nograd_func
-from datasets import transforms, find_dataset_def
+from datasets import transforms, find_dataset_def, collate_fn
 from models import RoomRecon
 from config import cfg, update_config
 from datasets.sampler import DistributedSampler
@@ -140,9 +140,9 @@ if cfg.DISTRIBUTED:
     )
 else:
     TrainImgLoader = DataLoader(train_dataset, cfg.BATCH_SIZE, shuffle=False, num_workers=cfg.TRAIN.N_WORKERS,
-                                drop_last=True)
+                                collate_fn=collate_fn, drop_last=True)
     TestImgLoader = DataLoader(test_dataset, cfg.BATCH_SIZE, shuffle=False, num_workers=cfg.TEST.N_WORKERS,
-                               drop_last=False)
+                               collate_fn=collate_fn, drop_last=False)
 
 # model, optimizer
 model = RoomRecon(cfg)
