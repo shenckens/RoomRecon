@@ -472,7 +472,7 @@ class RandomTransformSpace(object):
             data.pop('tsdf_list_full')
             data.pop('vol_dim')
         # data.pop('epoch')
-
+        print('LENGTH OF THE DATADICT=', len(data))
         return data
 
 def rigid_transform(xyz, transform):
