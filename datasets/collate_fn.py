@@ -27,5 +27,6 @@ def collate_fn(list_data):
         'epoch': torch.tensor(list_data[0]['epoch']),
         'occ_list': [torch.stack([item['occ_list'][i] for item in list_data]) for i in
                      range(len(list_data[0]['occ_list']))],
-        'tsdf_list': torch.stack([item['tsdf_list'] for item in list_data]),
+        'tsdf_list': [torch.stack([item['tsdf_list'][i] for item in list_data]) for i in
+                     range(len(list_data[0]['tsdf_list']))]
     }
