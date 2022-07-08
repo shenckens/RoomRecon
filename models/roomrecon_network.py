@@ -327,19 +327,19 @@ class RoomNet(nn.Module):
                         inputs['world_to_aligned_camera'])[b].permute(1, 0).contiguous()
                 center_points = center_points[:, :3]
 
-                print("HERE THEY AREEEFJNKSJNJGD")
-                print('tsdf', pre_tsdf.shape)
-                print('tsdf[0]', pre_tsdf[0])
-                print('center_points', center_points.shape)
-                print('center_points[0]', center_points[0])
-                print('planes', planes.shape)
-                print('planes[0]', planes[0])
-                print('pre_coords', pre_coords.shape)
-                print('pre_coords[0]', pre_coords[0])
-                print('pre_occ', pre_occ.shape)
-                print('pre_occ[0]', pre_occ[0])
-                print('planes_gt', planes_gt.shape)
-                planar_loss = self.calculate_planar_loss(planes[:, :3], planes[:, 3:], planes_gt[:, :3], planes_gt[:, 3:])
+                # print("HERE THEY AREEEFJNKSJNJGD")
+                # print('tsdf', pre_tsdf.shape)
+                # print('tsdf[0]', pre_tsdf[0])
+                # print('center_points', center_points.shape)
+                # print('center_points[0]', center_points[0])
+                # print('planes', planes.shape)
+                # print('planes[0]', planes[0])
+                # print('pre_coords', pre_coords.shape)
+                # print('pre_coords[0]', pre_coords[0])
+                # print('pre_occ', pre_occ.shape)
+                # print('pre_occ[0]', pre_occ[0])
+                # print('planes_gt', planes_gt.shape)
+                # planar_loss = self.calculate_planar_loss(planes[:, :3], planes[:, 3:], planes_gt[:, :3], planes_gt[:, 3:])
 
                 # A,B,C,D,X,Y,Z,OCC for vote
                 # planes = planes[:, :3] # / planes[:, 3:]
