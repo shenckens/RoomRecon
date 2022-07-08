@@ -629,7 +629,7 @@ class RoomNet(nn.Module):
             else:
                 off_loss = 0
         else:
-            class_loss = residual_loss = off_loss = 0
+            class_loss = residual_loss = off_loss = distance_loss = 0
 
         # compute Mean Planar Loss (for enforcing planarity) between matching voxels from estimated plane instances and tsdf
 
