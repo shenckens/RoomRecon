@@ -36,6 +36,7 @@ MODEL:
   FUSION:
     FUSION_ON: True
     HIDDEN_DIM: 64
+    PLANARITY: TRUE
 
   LW: [1.0, 0.8, 0.64, 2.0]
 
