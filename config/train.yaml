@@ -7,7 +7,7 @@ MODE: 'train'
 
 TRAIN:
   PATH: '/project/henckens/data/scannet'
-  EPOCHS: 20
+  EPOCHS: 30
   N_VIEWS: 9
   LR: 1e-3
   N_WORKERS: 4
@@ -29,7 +29,7 @@ MODEL:
     ARC: 'fpn-mnas-1'
 
   FUSION:
-    FUSION_ON: False
+    FUSION_ON: True
     HIDDEN_DIM: 64
 
     AVERAGE: False
@@ -37,5 +37,5 @@ MODEL:
 
   LW: [1.0, 0.8, 0.64]
 
-  THRESHOLDS: [0.5, 0.5, 0.5]
+  THRESHOLDS: [0, 0, 0]
   POS_WEIGHT: 1.5
