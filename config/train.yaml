@@ -34,7 +34,6 @@ MODEL:
 
     AVERAGE: False
     FULL: True
-    PLANARITY: False
 
   LW: [1.0, 0.8, 0.64]
 
