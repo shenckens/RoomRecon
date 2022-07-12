@@ -221,7 +221,7 @@ def train():
                 'epoch': epoch_idx,
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict()},
-                "{}/model_{:0>6}.ckpt".format(cfg.LOGDIR, epoch_idx))
+                "{}/model_tresh05_{:0>6}.ckpt".format(cfg.LOGDIR, epoch_idx))
 
 
 def test(from_latest=False):
