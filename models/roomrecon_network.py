@@ -521,7 +521,7 @@ class RoomNet(nn.Module):
         tsdf = tsdf.view(-1)
         occ = occ.view(-1)
         tsdf_target = tsdf_target.view(-1)
-        # occ_target = occ_target.view(-1)
+        occ_target = occ_target.view(-1)
         if mask is not None:
             mask = mask.view(-1)
             tsdf = tsdf[mask]
