@@ -221,7 +221,7 @@ class RoomNet(nn.Module):
 
             # ----gru fusion----
             if self.cfg.FUSION.FUSION_ON:
-                up_coords, feat, tsdf_target, occ_target = self.gru_fusion(
+                up_coords, r_coords, feat, label_target, tsdf_target, occ_target = self.gru_fusion(
                     up_coords, feat, inputs, i)
                 if self.cfg.FUSION.FULL:
                     grid_mask = torch.ones_like(feat[:, 0]).bool()
