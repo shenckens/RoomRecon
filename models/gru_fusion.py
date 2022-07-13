@@ -45,10 +45,12 @@ class GRUFusion(nn.Module):
                                                 vres=self.cfg.VOXEL_SIZE * 2 ** (self.n_scales - i)))
 
     def reset(self, i):
-        self.global_volume[i] = PointTensor(torch.Tensor([]), torch.Tensor([]).view(0, 3).long()).cuda()
-        self.target_tsdf_volume[i] = PointTensor(torch.Tensor([]), torch.Tensor([]).view(0, 3).long()).cuda()
-        self.target_label_volume[i] = PointTensor(torch.Tensor([]), torch.Tensor([]).view(0, 3).long()).cuda()
-
+        self.global_volume[i] = PointTensor(torch.Tensor(
+            []), torch.Tensor([]).view(0, 3).long()).cuda()
+        self.target_tsdf_volume[i] = PointTensor(
+            torch.Tensor([]), torch.Tensor([]).view(0, 3).long()).cuda()
+        self.target_label_volume[i] = PointTensor(
+            torch.Tensor([]), torch.Tensor([]).view(0, 3).long()).cuda()
 
     def convert2dense(self, current_coords, current_values, coords_target_global, tsdf_target, relative_origin,
                       scale):
@@ -78,15 +80,18 @@ class GRUFusion(nn.Module):
         global_label_target = self.target_label_volume[scale].F
         global_coords_target = self.target_tsdf_volume[scale].C
 
-        dim = (torch.Tensor(self.cfg.N_VOX).cuda() // 2 ** (self.cfg.N_LAYER - scale - 1)).int()
+        dim = (torch.Tensor(self.cfg.N_VOX).cuda()
+               // 2 ** (self.cfg.N_LAYER - scale - 1)).int()
         dim_list = dim.data.cpu().numpy().tolist()
 
         # mask voxels that are out of the FBV
         global_coords = global_coords - relative_origin
         valid = ((global_coords < dim) & (global_coords >= 0)).all(dim=-1)
         if self.cfg.FUSION.FULL is False:
-            valid_volume = sparse_to_dense_torch(current_coords, 1, dim_list, 0, global_value.device)
-            value = valid_volume[global_coords[valid][:, 0], global_coords[valid][:, 1], global_coords[valid][:, 2]]
+            valid_volume = sparse_to_dense_torch(
+                current_coords, 1, dim_list, 0, global_value.device)
+            value = valid_volume[global_coords[valid][:, 0],
+                                 global_coords[valid][:, 1], global_coords[valid][:, 2]]
             all_true = valid[valid]
             all_true[value == 0] = False
             valid[valid] = all_true
@@ -100,9 +105,11 @@ class GRUFusion(nn.Module):
         if self.cfg.FUSION.FULL is True:
             # change the structure of sparsity, combine current coordinates and previous coordinates from global volume
             if self.direct_substitude:
-                updated_coords = torch.nonzero((global_volume.abs() < 1).any(-1) | (current_volume.abs() < 1).any(-1))
+                updated_coords = torch.nonzero(
+                    (global_volume.abs() < 1).any(-1) | (current_volume.abs() < 1).any(-1))
             else:
-                updated_coords = torch.nonzero((global_volume != 0).any(-1) | (current_volume != 0).any(-1))
+                updated_coords = torch.nonzero(
+                    (global_volume != 0).any(-1) | (current_volume != 0).any(-1))
         else:
             updated_coords = current_coords
 
@@ -110,10 +117,13 @@ class GRUFusion(nn.Module):
         if tsdf_target is not None:
             # mask voxels that are out of the FBV
             global_coords_target = global_coords_target - relative_origin
-            valid_target = ((global_coords_target < dim) & (global_coords_target >= 0)).all(dim=-1)
+            valid_target = ((global_coords_target < dim) & (
+                global_coords_target >= 0)).all(dim=-1)
             # combine current tsdf and global tsdf
-            coords_target = torch.cat([global_coords_target[valid_target], coords_target_global])[:, :3]
-            tsdf_target = torch.cat([global_tsdf_target[valid_target], tsdf_target.unsqueeze(-1)])
+            coords_target = torch.cat(
+                [global_coords_target[valid_target], coords_target_global])[:, :3]
+            tsdf_target = torch.cat(
+                [global_tsdf_target[valid_target], tsdf_target.unsqueeze(-1)])
             # sparse to dense
             target_volume = sparse_to_dense_channel(coords_target, tsdf_target, dim_list, 1, 1,
                                                     tsdf_target.device)
@@ -139,7 +149,8 @@ class GRUFusion(nn.Module):
         self.global_volume[scale].F = torch.cat(
             [self.global_volume[scale].F[valid == False], value])
         coords = coords + relative_origin
-        self.global_volume[scale].C = torch.cat([self.global_volume[scale].C[valid == False], coords])
+        self.global_volume[scale].C = torch.cat(
+            [self.global_volume[scale].C[valid == False], coords])
 
         # target
         if target_volume is not None:
@@ -147,7 +158,8 @@ class GRUFusion(nn.Module):
             self.target_tsdf_volume[scale].F = torch.cat(
                 [self.target_tsdf_volume[scale].F[valid_target == False],
                  target_volume[target_volume.abs() < 1].unsqueeze(-1)])
-            target_coords = torch.nonzero(target_volume.abs() < 1) + relative_origin
+            target_coords = torch.nonzero(
+                target_volume.abs() < 1) + relative_origin
 
             self.target_tsdf_volume[scale].C = torch.cat(
                 [self.target_tsdf_volume[scale].C[valid_target == False], target_coords])
@@ -174,11 +186,13 @@ class GRUFusion(nn.Module):
         tsdf = self.global_volume[scale].F.squeeze(-1)
         max_c = torch.max(fuse_coords, dim=0)[0][:3]
         min_c = torch.min(fuse_coords, dim=0)[0][:3]
-        outputs['origin'].append(min_c * self.cfg.VOXEL_SIZE * (2 ** (self.cfg.N_LAYER - scale - 1)))
+        outputs['origin'].append(
+            min_c * self.cfg.VOXEL_SIZE * (2 ** (self.cfg.N_LAYER - scale - 1)))
 
         ind_coords = fuse_coords - min_c
         dim_list = (max_c - min_c + 1).int().data.cpu().numpy().tolist()
-        tsdf_volume = sparse_to_dense_torch(ind_coords, tsdf, dim_list, 1, tsdf.device)
+        tsdf_volume = sparse_to_dense_torch(
+            ind_coords, tsdf, dim_list, 1, tsdf.device)
         outputs['scene_tsdf'].append(tsdf_volume)
 
         return outputs
@@ -229,7 +243,8 @@ class GRUFusion(nn.Module):
             origin = inputs['vol_origin_partial'][i]  # origin of part volume
 
             if scene != self.scene_name[scale] and self.scene_name[scale] is not None and self.direct_substitude:
-                outputs = self.save_mesh(scale, outputs, self.scene_name[scale])
+                outputs = self.save_mesh(
+                    scale, outputs, self.scene_name[scale])
 
             # if this fragment is from new scene, we reinitialize backend map
             if self.scene_name[scale] is None or scene != self.scene_name[scale]:
@@ -253,8 +268,10 @@ class GRUFusion(nn.Module):
             if 'occ_list' in inputs.keys():
                 # get partial gt
                 occ_target = inputs['occ_list'][self.cfg.N_LAYER - scale - 1][i]
-                tsdf_target = inputs['tsdf_list'][self.cfg.N_LAYER - scale - 1][i][occ_target]
-                label_target = inputs['label_list'][self.cfg.N_LAYER - scale - 1][i][occ_target]
+                tsdf_target = inputs['tsdf_list'][self.cfg.N_LAYER
+                                                  - scale - 1][i][occ_target]
+                label_target = inputs['label_list'][self.cfg.N_LAYER
+                                                    - scale - 1][i][occ_target]
                 coords_target = torch.nonzero(occ_target)
             else:
                 coords_target = tsdf_target = label_target = None
@@ -270,12 +287,16 @@ class GRUFusion(nn.Module):
                 scale)
 
             # dense to sparse: get features using new feature coordinates (updated_coords)
-            values = current_volume[updated_coords[:, 0], updated_coords[:, 1], updated_coords[:, 2]]
-            global_values = global_volume[updated_coords[:, 0], updated_coords[:, 1], updated_coords[:, 2]]
+            values = current_volume[updated_coords[:, 0],
+                                    updated_coords[:, 1], updated_coords[:, 2]]
+            global_values = global_volume[updated_coords[:, 0],
+                                          updated_coords[:, 1], updated_coords[:, 2]]
             # get fused gt
             if target_volume is not None:
-                tsdf_target = target_volume[updated_coords[:, 0], updated_coords[:, 1], updated_coords[:, 2]]
-                label_target = target_volume[updated_coords[:, 0], updated_coords[:, 1], updated_coords[:, 2]]
+                tsdf_target = target_volume[updated_coords[:, 0],
+                                            updated_coords[:, 1], updated_coords[:, 2]]
+                label_target = target_volume[updated_coords[:, 0],
+                                             updated_coords[:, 1], updated_coords[:, 2]]
                 occ_target = tsdf_target.abs() < 1
             else:
                 tsdf_target = label_target = occ_target = None
@@ -295,11 +316,13 @@ class GRUFusion(nn.Module):
                 values = self.fusion_nets[scale](h, x)
 
             # feed back to global volume (direct substitute)
-            self.update_map(values, updated_coords, target_volume, valid, valid_target, relative_origin, scale)
+            self.update_map(values, updated_coords, target_volume,
+                            valid, valid_target, relative_origin, scale)
 
             if updated_coords_all is None:
                 updated_coords_all = torch.cat([torch.ones_like(updated_coords[:, :1]) * i, updated_coords * interval],
                                                dim=1)
+                updated_r_coords_all = r_coords
                 values_all = values
                 tsdf_target_all = tsdf_target
                 label_target_all = label_target
@@ -307,14 +330,17 @@ class GRUFusion(nn.Module):
             else:
                 updated_coords = torch.cat([torch.ones_like(updated_coords[:, :1]) * i, updated_coords * interval],
                                            dim=1)
-                updated_coords_all = torch.cat([updated_coords_all, updated_coords])
+                updated_coords_all = torch.cat(
+                    [updated_coords_all, updated_coords])
                 values_all = torch.cat([values_all, values])
 
                 if r_coords is not None:
-                    updated_r_coords_all = torch.cat([updated_r_coords_all, r_coords])
+                    updated_r_coords_all = torch.cat(
+                        [updated_r_coords_all, r_coords])
 
                 if label_target_all is not None:
-                    label_target_all = torch.cat([label_target_all, label_target])
+                    label_target_all = torch.cat(
+                        [label_target_all, label_target])
                     occ_target_all = torch.cat([occ_target_all, occ_target])
 
                 if tsdf_target_all is not None:
@@ -322,7 +348,8 @@ class GRUFusion(nn.Module):
                     occ_target_all = torch.cat([occ_target_all, occ_target])
 
             if self.direct_substitude and save_mesh:
-                outputs = self.save_mesh(scale, outputs, self.scene_name[scale])
+                outputs = self.save_mesh(
+                    scale, outputs, self.scene_name[scale])
 
         if self.direct_substitude:
             return outputs
