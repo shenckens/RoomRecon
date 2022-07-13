@@ -32,6 +32,7 @@ class GRUFusion(nn.Module):
         self.global_origin = [None, None, None]
         self.global_volume = [None, None, None]
         self.target_tsdf_volume = [None, None, None]
+        self.target_label_volume = [None, None, None]
 
         if direct_substitute:
             self.fusion_nets = None
@@ -46,6 +47,8 @@ class GRUFusion(nn.Module):
     def reset(self, i):
         self.global_volume[i] = PointTensor(torch.Tensor([]), torch.Tensor([]).view(0, 3).long()).cuda()
         self.target_tsdf_volume[i] = PointTensor(torch.Tensor([]), torch.Tensor([]).view(0, 3).long()).cuda()
+        self.target_label_volume[i] = PointTensor(torch.Tensor([]), torch.Tensor([]).view(0, 3).long()).cuda()
+
 
     def convert2dense(self, current_coords, current_values, coords_target_global, tsdf_target, relative_origin,
                       scale):
@@ -72,6 +75,7 @@ class GRUFusion(nn.Module):
         global_coords = self.global_volume[scale].C
         global_value = self.global_volume[scale].F
         global_tsdf_target = self.target_tsdf_volume[scale].F
+        global_label_target = self.target_label_volume[scale].F
         global_coords_target = self.target_tsdf_volume[scale].C
 
         dim = (torch.Tensor(self.cfg.N_VOX).cuda() // 2 ** (self.cfg.N_LAYER - scale - 1)).int()
@@ -212,9 +216,11 @@ class GRUFusion(nn.Module):
         interval = 2 ** (self.cfg.N_LAYER - scale - 1)
 
         tsdf_target_all = None
+        label_target_all = None
         occ_target_all = None
         values_all = None
         updated_coords_all = None
+        updated_r_coords_all = None
 
         # ---incremental fusion----
         for i in range(batch_size):
@@ -248,9 +254,10 @@ class GRUFusion(nn.Module):
                 # get partial gt
                 occ_target = inputs['occ_list'][self.cfg.N_LAYER - scale - 1][i]
                 tsdf_target = inputs['tsdf_list'][self.cfg.N_LAYER - scale - 1][i][occ_target]
+                label_target = inputs['label_list'][self.cfg.N_LAYER - scale - 1][i][occ_target]
                 coords_target = torch.nonzero(occ_target)
             else:
-                coords_target = tsdf_target = None
+                coords_target = tsdf_target = label_target = None
 
             # convert to dense: 1. convert sparse feature to dense feature; 2. combine current feature coordinates and
             # previous feature coordinates within FBV from our backend map to get new feature coordinates (updated_coords)
@@ -268,9 +275,10 @@ class GRUFusion(nn.Module):
             # get fused gt
             if target_volume is not None:
                 tsdf_target = target_volume[updated_coords[:, 0], updated_coords[:, 1], updated_coords[:, 2]]
+                label_target = target_volume[updated_coords[:, 0], updated_coords[:, 1], updated_coords[:, 2]]
                 occ_target = tsdf_target.abs() < 1
             else:
-                tsdf_target = occ_target = None
+                tsdf_target = label_target = occ_target = None
 
             if not self.direct_substitude:
                 # convert to aligned camera coordinate
@@ -294,12 +302,21 @@ class GRUFusion(nn.Module):
                                                dim=1)
                 values_all = values
                 tsdf_target_all = tsdf_target
+                label_target_all = label_target
                 occ_target_all = occ_target
             else:
                 updated_coords = torch.cat([torch.ones_like(updated_coords[:, :1]) * i, updated_coords * interval],
                                            dim=1)
                 updated_coords_all = torch.cat([updated_coords_all, updated_coords])
                 values_all = torch.cat([values_all, values])
+
+                if r_coords is not None:
+                    updated_r_coords_all = torch.cat([updated_r_coords_all, r_coords])
+
+                if label_target_all is not None:
+                    label_target_all = torch.cat([label_target_all, label_target])
+                    occ_target_all = torch.cat([occ_target_all, occ_target])
+
                 if tsdf_target_all is not None:
                     tsdf_target_all = torch.cat([tsdf_target_all, tsdf_target])
                     occ_target_all = torch.cat([occ_target_all, occ_target])
@@ -310,4 +327,4 @@ class GRUFusion(nn.Module):
         if self.direct_substitude:
             return outputs
         else:
-            return updated_coords_all, values_all, tsdf_target_all, occ_target_all
+            return updated_coords_all, updated_r_coords_all, values_all, label_target_all, tsdf_target_all, occ_target_all
