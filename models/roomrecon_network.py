@@ -528,6 +528,13 @@ class RoomNet(nn.Module):
             occ = occ[mask]
             tsdf_target = tsdf_target[mask]
             occ_target = occ_target[mask]
+            label_target = label_target[mask]
+            class_logits = class_logits[mask]
+            residuals = residuals[mask]
+            distance = distance[mask]
+            r_coords = r_coords[mask]
+            if off_center is not None:
+                off_center = off_center[mask]
 
         n_all = occ_target.shape[0]
         n_p = occ_target.sum()
