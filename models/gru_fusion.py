@@ -230,7 +230,6 @@ class GRUFusion(nn.Module):
         interval = 2 ** (self.cfg.N_LAYER - scale - 1)
 
         tsdf_target_all = None
-        label_target_all = None
         occ_target_all = None
         values_all = None
         updated_coords_all = None
@@ -270,8 +269,8 @@ class GRUFusion(nn.Module):
                 occ_target = inputs['occ_list'][self.cfg.N_LAYER - scale - 1][i]
                 tsdf_target = inputs['tsdf_list'][self.cfg.N_LAYER
                                                   - scale - 1][i][occ_target]
-                label_target = inputs['label_list'][self.cfg.N_LAYER
-                                                    - scale - 1][i][occ_target]
+                # label_target = inputs['label_list'][self.cfg.N_LAYER
+                #                                     - scale - 1][i][occ_target]
                 coords_target = torch.nonzero(occ_target)
             else:
                 coords_target = tsdf_target = label_target = None
@@ -282,7 +281,7 @@ class GRUFusion(nn.Module):
                 coords_b,
                 values,
                 coords_target,
-                label_target,
+                tsdf_target,
                 relative_origin,
                 scale)
 
@@ -295,11 +294,11 @@ class GRUFusion(nn.Module):
             if target_volume is not None:
                 tsdf_target = target_volume[updated_coords[:, 0],
                                             updated_coords[:, 1], updated_coords[:, 2]]
-                label_target = target_volume[updated_coords[:, 0],
-                                             updated_coords[:, 1], updated_coords[:, 2]]
+                # label_target = target_volume[updated_coords[:, 0],
+                #                              updated_coords[:, 1], updated_coords[:, 2]]
                 occ_target = tsdf_target.abs() < 1
             else:
-                tsdf_target = label_target = occ_target = None
+                tsdf_target = occ_target = None
 
             if not self.direct_substitude:
                 # convert to aligned camera coordinate
@@ -329,7 +328,6 @@ class GRUFusion(nn.Module):
                 updated_r_coords_all = r_coords
                 values_all = values
                 tsdf_target_all = tsdf_target
-                label_target_all = label_target
                 occ_target_all = occ_target
             else:
                 updated_coords = torch.cat([torch.ones_like(updated_coords[:, :1]) * i, updated_coords * interval],
@@ -342,11 +340,6 @@ class GRUFusion(nn.Module):
                     updated_r_coords_all = torch.cat(
                         [updated_r_coords_all, r_coords])
 
-                if label_target_all is not None:
-                    label_target_all = torch.cat(
-                        [label_target_all, label_target])
-                    occ_target_all = torch.cat([occ_target_all, occ_target])
-
                 if tsdf_target_all is not None:
                     tsdf_target_all = torch.cat([tsdf_target_all, tsdf_target])
                     occ_target_all = torch.cat([occ_target_all, occ_target])
@@ -358,4 +351,4 @@ class GRUFusion(nn.Module):
         if self.direct_substitude:
             return outputs
         else:
-            return updated_coords_all, updated_r_coords_all, values_all, label_target_all, tsdf_target_all, occ_target_all
+            return updated_coords_all, updated_r_coords_all, values_all, tsdf_target_all, occ_target_all
