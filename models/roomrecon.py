@@ -4,6 +4,7 @@ import torch.nn as nn
 from .backbone import MnasMulti
 from .roomrecon_network import RoomNet
 from .gru_fusion import GRUFusion
+from .enforce_planarity import PlanarityNet
 from utils import tocuda
 
 
@@ -24,8 +25,9 @@ class RoomRecon(nn.Module):
         # networks
         self.backbone2d = MnasMulti(alpha)
         self.roomrecon_net = RoomNet(cfg.MODEL)
+        self.group_planes = PlanarityNet(cfg.MODEL)
         # for fusing to global volume
-        self.fuse_to_global = GRUFusion(cfg.MODEL, direct_substitute=True)
+        self.fuse_to_global = GRUFusion(cfg.MODEL, direct_substitute=False)
 
     def normalizer(self, x):
         """ Normalizes the RGB images to the input range"""
@@ -79,8 +81,12 @@ class RoomRecon(nn.Module):
 
         # coarse-to-fine decoder: SparseConv and GRU Fusion.
         # in: image feature; out: sparse coords and tsdf
-        # this is the model that should be replaced by mine!!!
+        # this is the model that is replaced by mine (fusion of NR&PR)
         outputs, loss_dict = self.roomrecon_net(features, inputs, outputs)
+
+        # Cluster plane instances and add planar loss
+        if self.cfg.MODEL.FUSION.PLANARITY and 'embedding' in outputs.keys():
+            outputs = self.group_planes()
 
         # outputs = dict{'coords': coords, 'tsdf': tsdf}, loss_dict
 
