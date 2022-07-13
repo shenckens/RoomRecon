@@ -228,7 +228,7 @@ class RoomNet(nn.Module):
                 # ---- edited below from PR ----
                 if label_target is not None:
                     label_target = label_target.squeeze(1).long()
-                    occ_target = occ_target.squeeze(1)
+                    # occ_target = occ_target.squeeze(1)
 
             tsdf = self.tsdf_preds[i](feat)
             occ = self.occ_preds[i](feat)
