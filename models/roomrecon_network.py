@@ -94,19 +94,19 @@ class RoomNet(nn.Module):
         '''
         with torch.no_grad():
             tsdf_target = inputs['tsdf_list'][scale]
-            label_target = inputs['label_list'][scale]
+            # label_target = inputs['label_list'][scale]
             occ_target = inputs['occ_list'][scale]
             coords_down = coords.detach().clone().long()
             # 2 ** scale == interval
             coords_down[:, 1:] = (coords[:, 1:] // 2 ** scale)
             tsdf_target = tsdf_target[coords_down[:, 0],
                                       coords_down[:, 1], coords_down[:, 2], coords_down[:, 3]]
-            label_target = label_target[coords_down[:, 0],
-                                        coords_down[:, 1], coords_down[:, 2], coords_down[:, 3]]
+            # label_target = label_target[coords_down[:, 0],
+            #                             coords_down[:, 1], coords_down[:, 2], coords_down[:, 3]]
 
             occ_target = occ_target[coords_down[:, 0],
                                     coords_down[:, 1], coords_down[:, 2], coords_down[:, 3]]
-            return tsdf_target, label_target, occ_target
+            return tsdf_target, occ_target
 
     def upsample(self, pre_feat, pre_coords, interval, num=8):
         '''
@@ -196,20 +196,17 @@ class RoomNet(nn.Module):
                 feat = volume
 
             if not self.cfg.FUSION.FUSION_ON:
-                tsdf_target, label_target, occ_target = self.get_target(
-                    up_coords, inputs, scale)
+                tsdf_target, occ_target = self.get_target(up_coords, inputs, scale)
+                label_target = tsdf_target # if needed
 
             # ----convert to aligned camera coordinate----
             r_coords = up_coords.detach().clone().float()
             for b in range(bs):
                 batch_ind = torch.nonzero(up_coords[:, 0] == b).squeeze(1)
                 coords_batch = up_coords[batch_ind][:, 1:].float()
-                coords_batch = coords_batch * self.cfg.VOXEL_SIZE + \
-                    inputs['vol_origin_partial'][b].float()
-                coords_batch = torch.cat(
-                    (coords_batch, torch.ones_like(coords_batch[:, :1])), dim=1)
-                coords_batch = coords_batch @ inputs['world_to_aligned_camera'][b, :3, :].permute(
-                    1, 0).contiguous()
+                coords_batch = coords_batch * self.cfg.VOXEL_SIZE + inputs['vol_origin_partial'][b].float()
+                coords_batch = torch.cat((coords_batch, torch.ones_like(coords_batch[:, :1])), dim=1)
+                coords_batch = coords_batch @ inputs['world_to_aligned_camera'][b, :3, :].permute(1, 0).contiguous()
                 r_coords[batch_ind, 1:] = coords_batch
 
             # batch index is in the last position
@@ -221,14 +218,14 @@ class RoomNet(nn.Module):
 
             # ----gru fusion----
             if self.cfg.FUSION.FUSION_ON:
-                up_coords, r_coords, feat, label_target, tsdf_target, occ_target = self.gru_fusion(
+                up_coords, r_coords, feat, tsdf_target, occ_target = self.gru_fusion(
                     up_coords, feat, inputs, i)
                 if self.cfg.FUSION.FULL:
                     grid_mask = torch.ones_like(feat[:, 0]).bool()
                 # ---- edited below from PR ----
-                if label_target is not None:
-                    label_target = label_target.squeeze(1).long()
-                    # occ_target = occ_target.squeeze(1)
+                if tsdf_target is not None:
+                    label_target = tsdf_target.squeeze(1).long()
+                    occ_target = occ_target.squeeze(1)
 
             tsdf = self.tsdf_preds[i](feat)
             occ = self.occ_preds[i](feat)
