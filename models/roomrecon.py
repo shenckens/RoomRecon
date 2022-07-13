@@ -25,7 +25,7 @@ class RoomRecon(nn.Module):
         # networks
         self.backbone2d = MnasMulti(alpha)
         self.roomrecon_net = RoomNet(cfg.MODEL)
-        self.group_planes = PlanarityNet(cfg.MODEL)
+        # self.group_planes = PlanarityNet(cfg.MODEL)
         # for fusing to global volume
         self.fuse_to_global = GRUFusion(cfg.MODEL, direct_substitute=True)
 
@@ -85,8 +85,8 @@ class RoomRecon(nn.Module):
         outputs, loss_dict = self.roomrecon_net(features, inputs, outputs)
 
         # Cluster plane instances and add planar loss
-        if self.cfg.MODEL.FUSION.PLANARITY and 'embedding' in outputs.keys():
-            outputs = self.group_planes()
+        # if self.cfg.MODEL.FUSION.PLANARITY and 'embedding' in outputs.keys():
+        #     outputs = self.group_planes()
 
         # outputs = dict{'coords': coords, 'tsdf': tsdf}, loss_dict
 
