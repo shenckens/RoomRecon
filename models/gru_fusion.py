@@ -282,7 +282,7 @@ class GRUFusion(nn.Module):
                 coords_b,
                 values,
                 coords_target,
-                tsdf_target,
+                label_target,
                 relative_origin,
                 scale)
 
@@ -304,10 +304,14 @@ class GRUFusion(nn.Module):
             if not self.direct_substitude:
                 # convert to aligned camera coordinate
                 r_coords = updated_coords.detach().clone().float()
-                r_coords = r_coords.permute(1, 0).contiguous().float() * voxel_size + origin.unsqueeze(-1).float()
-                r_coords = torch.cat((r_coords, torch.ones_like(r_coords[:1])), dim=0)
-                r_coords = inputs['world_to_aligned_camera'][i, :3, :] @ r_coords
-                r_coords = torch.cat([r_coords, torch.zeros(1, r_coords.shape[-1]).to(r_coords.device)])
+                r_coords = r_coords.permute(1, 0).contiguous(
+                ).float() * voxel_size + origin.unsqueeze(-1).float()
+                r_coords = torch.cat(
+                    (r_coords, torch.ones_like(r_coords[:1])), dim=0)
+                r_coords = inputs['world_to_aligned_camera'][i,
+                                                             :3, :] @ r_coords
+                r_coords = torch.cat([r_coords, torch.zeros(
+                    1, r_coords.shape[-1]).to(r_coords.device)])
                 r_coords = r_coords.permute(1, 0).contiguous()
 
                 h = PointTensor(global_values, r_coords)
