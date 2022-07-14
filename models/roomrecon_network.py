@@ -346,6 +346,7 @@ class RoomNet(nn.Module):
                 print("THE SHAPE OF THE 'PLANES'", planes.shape)
                 print("THE SHAPE OF CENTER POINTS", center_points.shape)
                 print("THE SHAPE OF TSDF VOLUME", pre_tsdf.shape)
+                print(center_points)
                 print("AND THE SHAPE OF THE GT PLANES (per batch size)", planes_gt[0].shape, planes_gt[1].shape)
 
 
