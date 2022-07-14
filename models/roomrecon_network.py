@@ -344,7 +344,8 @@ class RoomNet(nn.Module):
                     [planes[:, :3], center_points, planes[:, 3:], pre_occ], dim=1)
 
                 print("THE SHAPE OF THE 'PLANES'", planes.shape)
-                print("AND THE SHAPE OF THE GT PLANES", planes_gt.shape)
+                print("AND THE SHAPE OF THE GT PLANES", len(planes_gt))
+                print("ENTRY 0", planes_gt[0])
 
 
                 outputs['embedding'] = embedding
