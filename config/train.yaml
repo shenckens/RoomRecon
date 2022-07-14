@@ -7,7 +7,7 @@ MODE: 'train'
 
 TRAIN:
   PATH: '/project/henckens/data/scannet'
-  EPOCHS: 30
+  EPOCHS: 50
   N_VIEWS: 9
   LR: 1e-3
   N_WORKERS: 4
