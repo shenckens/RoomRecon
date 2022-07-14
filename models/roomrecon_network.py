@@ -343,7 +343,8 @@ class RoomNet(nn.Module):
                 embedding = torch.cat(
                     [planes[:, :3], center_points, planes[:, 3:], pre_occ], dim=1)
 
-
+                print("THE SHAPE OF THE 'PLANES'", planes.shape)
+                print("AND THE SHAPE OF THE GT PLANES", planes_gt.shape)
 
 
                 outputs['embedding'] = embedding
