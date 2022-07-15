@@ -182,7 +182,7 @@ def train():
         logger.info("loading model {}".format(cfg.LOADCKPT))
         map_location = {'cuda:%d' % 0: 'cuda:%d' % cfg.LOCAL_RANK}
         state_dict = torch.load(cfg.LOADCKPT, map_location=map_location)
-        model.load_state_dict(state_dict['model'])
+        model.load_state_dict(state_dict['model'], strict=False)
         optimizer.param_groups[0]['initial_lr'] = state_dict['optimizer']['param_groups'][0]['lr']
         optimizer.param_groups[0]['lr'] = state_dict['optimizer']['param_groups'][0]['lr']
         start_epoch = state_dict['epoch'] + 1
