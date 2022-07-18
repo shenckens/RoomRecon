@@ -29,11 +29,11 @@ MODEL:
     ARC: 'fpn-mnas-1'
 
   FUSION:
-    FUSION_ON: True
+    FUSION_ON: False
     HIDDEN_DIM: 64
 
     AVERAGE: False
-    FULL: True
+    FULL: False
 
   LW: [1.0, 0.8, 0.64]
 
