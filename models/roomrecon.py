@@ -85,8 +85,8 @@ class RoomRecon(nn.Module):
         outputs, loss_dict = self.roomrecon_net(features, inputs, outputs)
 
         # Cluster plane instances and add planar loss
-        # if self.cfg.MODEL.FUSION.PLANARITY and 'embedding' in outputs.keys():
-        #     outputs = self.group_planes()
+        if self.cfg.MODEL.FUSION.PLANARITY and 'embedding' in outputs.keys():
+            outputs = self.group_planes()
 
         # outputs = dict{'coords': coords, 'tsdf': tsdf}, loss_dict
 
@@ -103,7 +103,8 @@ class RoomRecon(nn.Module):
         weighted_loss = 0
 
         for i, (k, v) in enumerate(loss_dict.items()):
-            weighted_loss += v * self.cfg.LW[i]
+            n = k.split('_')[-1]
+            weighted_loss += v * self.cfg.LW[n]
 
         loss_dict.update({'total_loss': weighted_loss})
         return outputs, loss_dict
