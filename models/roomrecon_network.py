@@ -463,9 +463,9 @@ class RoomNet(nn.Module):
             planes_target = torch.zeros([label_target.shape[0], 4], device=label_target.device)
             for b in range(bs):
                 batch_ind = torch.nonzero(r_coords[:, -1] == b, as_tuple=False).squeeze(1)
-                anchors_target[batch_ind] = anchors_gt[b][label_target[batch_ind]]
-                residual_target[batch_ind] = residual_gt[b][label_target[batch_ind]]
-                planes_target[batch_ind] = planes_gt[b][label_target[batch_ind]]
+                anchors_target[batch_ind] = anchors_gt[b][label_target.long()[batch_ind]]
+                residual_target[batch_ind] = residual_gt[b][label_target.long()[batch_ind]]
+                planes_target[batch_ind] = planes_gt[b][label_target.long()[batch_ind]]
 
             class_loss = F.cross_entropy(class_logits, anchors_target)
             idx = torch.arange(residuals.shape[0], device=residuals.device).long()
