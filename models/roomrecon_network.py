@@ -508,7 +508,7 @@ class RoomNet(nn.Module):
             else:
                 off_loss = 0
         else:
-            class_loss = residual_loss = off_loss = 0
+            class_loss = residual_loss = off_loss = distance_loss = 0
 
         # compute final loss
         loss = lw[0] * class_loss + lw[1] * residual_loss + \
