@@ -103,7 +103,7 @@ class RoomRecon(nn.Module):
         weighted_loss = 0
 
         for i, (k, v) in enumerate(loss_dict.items()):
-            n = k.split('_')[-1]
+            n = int(k.split('_')[-1])
             weighted_loss += v * self.cfg.LW[n]
 
         loss_dict.update({'total_loss': weighted_loss})
