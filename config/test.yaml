@@ -11,7 +11,7 @@ TRAIN:
   EPOCHS: 991
   N_VIEWS: 9
   LR: 1e-3
-  N_WORKERS: 8
+  N_WORKERS: 4
   LREPOCHS: '200,400,800:2'
 
 TEST:
@@ -36,7 +36,6 @@ MODEL:
   FUSION:
     FUSION_ON: True
     HIDDEN_DIM: 64
-    PLANARITY: TRUE
 
   LW: [1.0, 0.8, 0.64, 2.0]
 
