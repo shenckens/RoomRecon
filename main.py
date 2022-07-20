@@ -221,7 +221,7 @@ def train():
                 'epoch': epoch_idx,
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict()},
-                "{}/separate_losses_model_{:0>6}.ckpt".format(cfg.LOGDIR, epoch_idx))
+                "{}/roomrecon_{:0>6}.ckpt".format(cfg.LOGDIR, epoch_idx))
 
 
 def test(from_latest=True):
