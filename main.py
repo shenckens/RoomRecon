@@ -238,7 +238,7 @@ def test(from_latest=False):
                 loadckpt = os.path.join(cfg.LOGDIR, ckpt)
                 logger.info("resuming " + str(loadckpt))
                 state_dict = torch.load(loadckpt)
-                model.load_state_dict(state_dict['model'])
+                model.load_state_dict(state_dict['model'], strict=False)
                 epoch_idx = state_dict['epoch']
 
                 TestImgLoader.dataset.tsdf_cashe = {}
