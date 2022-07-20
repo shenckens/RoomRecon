@@ -224,7 +224,7 @@ def train():
                 "{}/separate_losses_model_{:0>6}.ckpt".format(cfg.LOGDIR, epoch_idx))
 
 
-def test(from_latest=False):
+def test(from_latest=True):
     ckpt_list = []
     while True:
         saved_models = [fn for fn in os.listdir(cfg.LOGDIR) if fn.endswith(".ckpt")]
