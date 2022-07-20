@@ -34,10 +34,10 @@ class GRUFusion(nn.Module):
         self.target_tsdf_volume = [None, None, None]
         self.target_label_volume = [None, None, None]
 
-        # if direct_substitute:
-        #     self.fusion_nets = None
-        # else:
-        self.fusion_nets = nn.ModuleList()
+        if direct_substitute:
+            self.fusion_nets = None
+        else:
+            self.fusion_nets = nn.ModuleList()
         for i, ch in enumerate(ch_in):
             self.fusion_nets.append(ConvGRU(hidden_dim=ch,
                                             input_dim=ch,
@@ -103,10 +103,10 @@ class GRUFusion(nn.Module):
 
         if self.cfg.FUSION.FULL is True:
             # change the structure of sparsity, combine current coordinates and previous coordinates from global volume
-            # if self.direct_substitude:
-            #     updated_coords = torch.nonzero((global_volume.abs() < 1).any(-1) | (current_volume.abs() < 1).any(-1))
-            # else:
-            updated_coords = torch.nonzero((global_volume != 0).any(-1) | (current_volume != 0).any(-1))
+            if self.direct_substitude:
+                updated_coords = torch.nonzero((global_volume.abs() < 1).any(-1) | (current_volume.abs() < 1).any(-1))
+            else:
+                updated_coords = torch.nonzero((global_volume != 0).any(-1) | (current_volume != 0).any(-1))
         else:
             updated_coords = current_coords
 
@@ -230,9 +230,9 @@ class GRUFusion(nn.Module):
             global_origin = inputs['vol_origin'][i]  # origin of global volume
             origin = inputs['vol_origin_partial'][i]  # origin of part volume
 
-            # if scene != self.scene_name[scale] and self.scene_name[scale] is not None and self.direct_substitude:
-            #     outputs = self.save_mesh(
-            #         scale, outputs, self.scene_name[scale])
+            if scene != self.scene_name[scale] and self.scene_name[scale] is not None and self.direct_substitude:
+                outputs = self.save_mesh(
+                    scale, outputs, self.scene_name[scale])
 
             # if this fragment is from new scene, we reinitialize backend map
             if self.scene_name[scale] is None or scene != self.scene_name[scale]:
@@ -285,20 +285,20 @@ class GRUFusion(nn.Module):
             else:
                 tsdf_target = occ_target = None
 
-            # if not self.direct_substitude:
-            # convert to aligned camera coordinate
-            r_coords = updated_coords.detach().clone().float()
-            r_coords = r_coords.permute(1, 0).contiguous().float() * voxel_size + origin.unsqueeze(-1).float()
-            r_coords = torch.cat((r_coords, torch.ones_like(r_coords[:1])), dim=0)
-            r_coords = inputs['world_to_aligned_camera'][i, :3, :] @ r_coords
-            r_coords = torch.cat([r_coords, torch.zeros(1, r_coords.shape[-1]).to(r_coords.device)])
-            r_coords = r_coords.permute(1, 0).contiguous()
+            if not self.direct_substitude:
+                # convert to aligned camera coordinate
+                r_coords = updated_coords.detach().clone().float()
+                r_coords = r_coords.permute(1, 0).contiguous().float() * voxel_size + origin.unsqueeze(-1).float()
+                r_coords = torch.cat((r_coords, torch.ones_like(r_coords[:1])), dim=0)
+                r_coords = inputs['world_to_aligned_camera'][i, :3, :] @ r_coords
+                r_coords = torch.cat([r_coords, torch.zeros(1, r_coords.shape[-1]).to(r_coords.device)])
+                r_coords = r_coords.permute(1, 0).contiguous()
 
-            h = PointTensor(global_values, r_coords)
-            x = PointTensor(values, r_coords)
+                h = PointTensor(global_values, r_coords)
+                x = PointTensor(values, r_coords)
 
-            values = self.fusion_nets[scale](h, x)
-            r_coords[:, 3] = i
+                values = self.fusion_nets[scale](h, x)
+            # r_coords[:, 3] = i
 
             # feed back to global volume (direct substitute)
             self.update_map(values, updated_coords, target_volume,
