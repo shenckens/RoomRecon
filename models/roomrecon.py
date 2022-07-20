@@ -27,7 +27,7 @@ class RoomRecon(nn.Module):
         self.roomrecon_net = RoomNet(cfg.MODEL)
         # self.group_planes = PlanarityNet(cfg.MODEL)
         # for fusing to global volume
-        self.fuse_to_global = GRUFusion(cfg.MODEL, direct_substitute=True)
+        self.fuse_to_global = GRUFusion(cfg.MODEL, [1,1,1], direct_substitute=True)
 
     def normalizer(self, x):
         """ Normalizes the RGB images to the input range"""
