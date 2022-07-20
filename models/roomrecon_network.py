@@ -250,31 +250,36 @@ class RoomNet(nn.Module):
             num = int(occupancy.sum().data.cpu())
 
             # -------compute loss-------
-            if tsdf_target is not None and self.training:
-                tsdf_occ_loss = self.tsdf_occ_loss(tsdf, occ, tsdf_target, occ_target,
-                                                   mask=grid_mask, pos_weight=self.cfg.POS_WEIGHT)
-            else:
-                tsdf_occ_loss = torch.Tensor([0])[0]
-                logger.info('No tsdf_target, tsdf_occ_loss=0')
-            loss_dict.update({f'tsdf_occ_loss_{i}': tsdf_occ_loss})
-
-            if anchors_gt is not None and self.training:
-                normal_loss = self.normal_loss(occ, class_logits, residuals, distance, off_center,
-                                               occ_target, label_target, anchors_gt, residual_gt, planes_gt, mean_xyz_gt, r_coords,
-                                               mask=grid_mask, pos_weight=1.0)
-            else:
-                normal_loss = torch.Tensor([0])[0]
-                logger.info('No tsdf_target, normal_loss=0')
-            loss_dict.update({f'normal_loss_{i}': normal_loss})
-
-            # if tsdf_target is not None and anchors_gt is not None and self.training:
-            #     combined_loss = self.compute_loss(tsdf, occ, class_logits, residuals, distance, off_center,
-            #                      tsdf_target, occ_target, label_target, anchors_gt, residual_gt,
-            #                      planes_gt, mean_xyz_gt, r_coords, mask=grid_mask, loss_weight=(1, 1, 1, 1, 1, 1),
-            #                      pos_weight=1.0)
+            # if tsdf_target is not None and self.training:
+            #     tsdf_occ_loss = self.tsdf_occ_loss(tsdf, occ, tsdf_target, occ_target,
+            #                                        mask=grid_mask, pos_weight=self.cfg.POS_WEIGHT)
             # else:
-            #     combined_loss = torch.Tensor([0])[0]
-            # loss_dict.update({f'combined_loss_{i}': combined_loss})
+            #     tsdf_occ_loss = torch.Tensor([0])[0]
+            #     logger.info('No tsdf_target, tsdf_occ_loss=0')
+            # loss_dict.update({f'tsdf_occ_loss_{i}': tsdf_occ_loss})
+            #
+            # if anchors_gt is not None and self.training:
+            #     normal_loss = self.normal_loss(occ, class_logits, residuals, distance, off_center,
+            #                                    occ_target, label_target, anchors_gt, residual_gt, planes_gt, mean_xyz_gt, r_coords,
+            #                                    mask=grid_mask, pos_weight=1.0)
+            # else:
+            #     normal_loss = torch.Tensor([0])[0]
+            #     logger.info('No tsdf_target, normal_loss=0')
+            # loss_dict.update({f'normal_loss_{i}': normal_loss})
+
+            if tsdf_target is not None and anchors_gt is not None and self.training:
+                combined_loss = self.compute_loss(tsdf, occ, class_logits, residuals, distance, off_center,
+                                 tsdf_target, occ_target, label_target, anchors_gt, residual_gt,
+                                 planes_gt, mean_xyz_gt, r_coords, mask=grid_mask, loss_weight=(1, 1, 1, 1, 1, 1),
+                                 pos_weight=1.0)
+            else:
+                combined_loss = torch.Tensor([0])[0]
+                logger.info('combined_loss=0')
+                if tsdf_target is None:
+                    logger.info('tsdf_target is None')
+                if anchors_gt is None:
+                    logger.info('anchors_gt is None')
+            loss_dict.update({f'combined_loss_{i}': combined_loss})
 
             if num == 0:
                 logger.warning('no valid points: scale {}'.format(i))
@@ -667,6 +672,8 @@ class RoomNet(nn.Module):
         loss = loss_weight[0] * occ_loss + loss_weight[1] * tsdf_loss + loss_weight[2] * class_loss + \
             loss_weight[3] * residual_loss + loss_weight[4] * \
             distance_loss + loss_weight[5] * off_loss
+        logger.info(f'occ_loss={occ_loss}, tsdf_loss={tsdf_loss}, class_loss={class_loss}, residual_loss={residual_loss}, distance_loss={distance_loss}, offset_loss={off_loss}')
+
         return loss
 
     def compute_offset_loss(self, offset, gt_offsets):
