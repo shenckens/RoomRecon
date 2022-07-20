@@ -285,19 +285,20 @@ class GRUFusion(nn.Module):
             else:
                 tsdf_target = occ_target = None
 
-            if not self.direct_substitude:
-                # convert to aligned camera coordinate
-                r_coords = updated_coords.detach().clone().float()
-                r_coords = r_coords.permute(1, 0).contiguous().float() * voxel_size + origin.unsqueeze(-1).float()
-                r_coords = torch.cat((r_coords, torch.ones_like(r_coords[:1])), dim=0)
-                r_coords = inputs['world_to_aligned_camera'][i, :3, :] @ r_coords
-                r_coords = torch.cat([r_coords, torch.zeros(1, r_coords.shape[-1]).to(r_coords.device)])
-                r_coords = r_coords.permute(1, 0).contiguous()
+            # if not self.direct_substitude:
+            # convert to aligned camera coordinate
+            r_coords = updated_coords.detach().clone().float()
+            r_coords = r_coords.permute(1, 0).contiguous().float() * voxel_size + origin.unsqueeze(-1).float()
+            r_coords = torch.cat((r_coords, torch.ones_like(r_coords[:1])), dim=0)
+            r_coords = inputs['world_to_aligned_camera'][i, :3, :] @ r_coords
+            r_coords = torch.cat([r_coords, torch.zeros(1, r_coords.shape[-1]).to(r_coords.device)])
+            r_coords = r_coords.permute(1, 0).contiguous()
 
-                h = PointTensor(global_values, r_coords)
-                x = PointTensor(values, r_coords)
+            h = PointTensor(global_values, r_coords)
+            x = PointTensor(values, r_coords)
 
-                values = self.fusion_nets[scale](h, x)
+            values = self.fusion_nets[scale](h, x)
+            r_coords[:, 3] = i
 
             # feed back to global volume (direct substitute)
             self.update_map(values, updated_coords, target_volume,
