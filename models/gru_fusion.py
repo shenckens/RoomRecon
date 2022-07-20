@@ -93,7 +93,7 @@ class GRUFusion(nn.Module):
             # valid_clone = valid.clone()
             all_true = valid[valid]
             all_true[value == 0] = False
-            valid[valid] = all_true.clone()
+            valid[valid.clone()] = all_true
         # sparse to dense
         global_volume = sparse_to_dense_channel(global_coords[valid], global_value[valid], dim_list, self.ch_in[scale],
                                                 self.feat_init, global_value.device)
