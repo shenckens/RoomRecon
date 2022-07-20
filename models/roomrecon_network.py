@@ -255,6 +255,7 @@ class RoomNet(nn.Module):
                                                    mask=grid_mask, pos_weight=self.cfg.POS_WEIGHT)
             else:
                 tsdf_occ_loss = torch.Tensor([0])[0]
+                logger.info('No tsdf_target, tsdf_occ_loss=0')
             loss_dict.update({f'tsdf_occ_loss_{i}': tsdf_occ_loss})
 
             if anchors_gt is not None and self.training:
@@ -263,6 +264,7 @@ class RoomNet(nn.Module):
                                                mask=grid_mask, pos_weight=1.0)
             else:
                 normal_loss = torch.Tensor([0])[0]
+                logger.info('No tsdf_target, normal_loss=0')
             loss_dict.update({f'normal_loss_{i}': normal_loss})
 
             # if tsdf_target is not None and anchors_gt is not None and self.training:
@@ -348,19 +350,11 @@ class RoomNet(nn.Module):
                 # A,B,C,D,X,Y,Z,OCC for vote
                 # planes = planes[:, :3] # / planes[:, 3:]
                 embedding = torch.cat([planes[:, :3], center_points, planes[:, 3:], pre_occ], dim=1)
-                # print("SCENE ID", inputs['scene'])
-                # print("THE SHAPE OF THE 'PLANES'", planes.shape)
-                # print("THE SHAPE OF CENTER POINTS", center_points.shape)
-                # print(center_points)
-                # print("THE SHAPE OF TSDF VOLUME", pre_tsdf.shape)
-                # print(pre_tsdf)
-                # print("AND THE SHAPE OF THE GT PLANES (per batch size)",
-                #       planes_gt[0].shape, planes_gt[1].shape)
-                # print(planes_gt[0])
+
 
                 outputs['embedding'] = embedding
                 outputs['planes_gt'] = planes_gt
-                outputs['feat'] = feat
+                outputs['feat'] = pre_feat
 
                 # --- Coming from NR ----
                 outputs['coords'] = pre_coords
@@ -412,6 +406,7 @@ class RoomNet(nn.Module):
 
         # compute final loss
         loss = loss_weight[0] * occ_loss + loss_weight[1] * tsdf_loss
+        logger.info(f'occ_loss={occ_loss}, tsdf_loss={tsdf_loss}')
         return loss
 
     def normal_loss(self, occ, class_logits, residuals, distance, off_center, occ_target, label_target,
@@ -522,6 +517,7 @@ class RoomNet(nn.Module):
         # compute final loss
         loss = lw[0] * class_loss + lw[1] * residual_loss + \
             lw[2] * distance_loss + lw[3] * off_loss
+        logger.info(f'class_loss={class_loss}, residual_loss={residual_loss}, distance_loss={distance_loss}, offset_loss={off_loss}')
         return loss
 
     def compute_loss(self, tsdf, occ, class_logits, residuals, distance, off_center,
