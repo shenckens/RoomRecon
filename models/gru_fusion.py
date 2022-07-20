@@ -14,6 +14,7 @@ class GRUFusion(nn.Module):
 
     def __init__(self, cfg, ch_in=None, direct_substitute=False):
         super(GRUFusion, self).__init__()
+        
         self.cfg = cfg
         # replace tsdf in global tsdf volume by direct substitute corresponding voxels
         self.direct_substitude = direct_substitute
