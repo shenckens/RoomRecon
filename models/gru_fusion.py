@@ -17,9 +17,9 @@ class GRUFusion(nn.Module):
 
         self.cfg = cfg
         # replace tsdf in global tsdf volume by direct substitute corresponding voxels
-        self.direct_substitute = direct_substitute
+        self.direct_substitude = direct_substitute
 
-        if self.direct_substitute:
+        if direct_substitute:
             # tsdf
             self.ch_in = [1, 1, 1]
             self.feat_init = 1
@@ -39,11 +39,11 @@ class GRUFusion(nn.Module):
             self.fusion_nets = None
         else:
             self.fusion_nets = nn.ModuleList()
-        for i, ch in enumerate(ch_in):
-            self.fusion_nets.append(ConvGRU(hidden_dim=ch,
-                                            input_dim=ch,
-                                            pres=1,
-                                            vres=self.cfg.VOXEL_SIZE * 2 ** (self.n_scales - i)))
+            for i, ch in enumerate(ch_in):
+                self.fusion_nets.append(ConvGRU(hidden_dim=ch,
+                                                input_dim=ch,
+                                                pres=1,
+                                                vres=self.cfg.VOXEL_SIZE * 2 ** (self.n_scales - i)))
 
     def reset(self, i):
         self.global_volume[i] = PointTensor(torch.Tensor(
