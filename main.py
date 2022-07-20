@@ -166,7 +166,7 @@ def train():
     start_epoch = 0
     if cfg.RESUME:
         saved_models = [fn for fn in os.listdir(cfg.LOGDIR) if fn.endswith(".ckpt")]
-        saved_models = sorted(saved_models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
+        saved_models = sorted(saved_models, key=lambda x: int(x.split('_')[-1].split('.')[0][-3:]))
         if len(saved_models) != 0:
             # use the latest checkpoint file
             loadckpt = os.path.join(cfg.LOGDIR, saved_models[-1])
@@ -228,7 +228,7 @@ def test(from_latest=False):
     ckpt_list = []
     while True:
         saved_models = [fn for fn in os.listdir(cfg.LOGDIR) if fn.endswith(".ckpt")]
-        saved_models = sorted(saved_models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
+        saved_models = sorted(saved_models, key=lambda x: int(x.split('_')[-1].split('.')[0][-3:]))
 
         if from_latest:
             saved_models = saved_models[-1:]
