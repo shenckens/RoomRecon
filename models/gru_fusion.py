@@ -90,7 +90,8 @@ class GRUFusion(nn.Module):
         if self.cfg.FUSION.FULL is False:
             valid_volume = sparse_to_dense_torch(current_coords, 1, dim_list, 0, global_value.device)
             value = valid_volume[global_coords[valid][:, 0], global_coords[valid][:, 1], global_coords[valid][:, 2]]
-            all_true = valid[valid].clone()
+            value = value.clone()
+            all_true = valid[valid]
             all_true[value == 0] = False
             valid[valid] = all_true
         # sparse to dense
