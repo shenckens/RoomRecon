@@ -148,7 +148,7 @@ class ScanNetDataset(Dataset):
             'vol_dim': meta['vol_dim'],
             'scene': meta['scene'],
             'fragment': meta['scene'] + '_' + str(meta['fragment_id']),
-            # 'epoch': np.array([self.epoch]),
+            'epoch': np.array([self.epoch]),
         }
 
         if self.transforms is not None:

@@ -24,7 +24,7 @@ def collate_fn(list_data):
         'mean_xyz': [item['mean_xyz'] for item in list_data],
         'scene': [item['scene'] for item in list_data],
         'fragment': [item['fragment'] for item in list_data],
-        # 'epoch': torch.tensor(list_data[0]['epoch']),
+        'epoch': torch.tensor(list_data[0]['epoch']),
         'occ_list': [torch.stack([item['occ_list'][i] for item in list_data]) for i in
                      range(len(list_data[0]['occ_list']))],
         'tsdf_list': [torch.stack([item['tsdf_list'][i] for item in list_data]) for i in
