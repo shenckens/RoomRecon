@@ -81,12 +81,8 @@ class RoomRecon(nn.Module):
 
         # coarse-to-fine decoder: SparseConv and GRU Fusion.
         # in: image feature; out: sparse coords and tsdf
-        # this is the model that is replaced by mine (fusion of NR&PR)
-        outputs, loss_dict = self.roomrecon_net(features, inputs, outputs)
 
-        # Cluster plane instances and add planar loss
-        # if self.cfg.MODEL.FUSION.PLANARITY and 'embedding' in outputs.keys():
-        #     outputs = self.group_planes()
+        outputs, loss_dict = self.roomrecon_net(features, inputs, outputs)
 
         # outputs = dict{'coords': coords, 'tsdf': tsdf}, loss_dict
 
