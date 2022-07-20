@@ -239,7 +239,8 @@ def test(from_latest=True):
                 logger.info("resuming " + str(loadckpt))
                 state_dict = torch.load(loadckpt)
                 model.load_state_dict(state_dict['model'], strict=False)
-                epoch_idx = state_dict['epoch']
+                # epoch_idx = state_dict['epoch']
+                epoch_idx = 42
 
                 TestImgLoader.dataset.tsdf_cashe = {}
 
