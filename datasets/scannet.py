@@ -33,7 +33,7 @@ class ScanNetDataset(Dataset):
         self.tsdf_cashe = {}
         self.planes_cashe = {}
         # ---- max_cache = 100 in NeuralRecon, 1 in PlanarRecon. ----
-        self.max_cache = 100
+        self.max_cache = 50
         self.max_cashe = 1
 
     def build_list(self):
