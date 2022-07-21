@@ -10,13 +10,13 @@ TRAIN:
   EPOCHS: 20
   N_VIEWS: 9
   LR: 1e-3
-  N_WORKERS: 16
+  N_WORKERS: 8
   LREPOCHS: '12,24,48:2'
 
 TEST:
   PATH: '/project/henckens/data/scannet'
   N_VIEWS: 9
-  N_WORKERS: 16
+  N_WORKERS: 8
 
 MODEL:
   N_LAYER: 3
